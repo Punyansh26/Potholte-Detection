@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Pothole Detection — Live Dashboard</title>
+  <meta name="description" content="Autonomous pothole detection and closed-loop reporting dashboard with real-time map visualization." />
+
+  <!-- Leaflet -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+  <!-- App styles -->
+  <link rel="stylesheet" href="index.css" />
+</head>
+<body>
+
+<!-- ═══ Top bar ═══ -->
+<header class="topbar">
+  <div class="logo">PotholeGuard <span>v1.0</span></div>
+  <div class="topbar-actions">
+    <button class="btn btn-ghost" id="btn-refresh" title="Refresh data">
+      &#x21bb; Refresh
+    </button>
+    <button class="btn btn-primary" id="btn-report" title="File a manual report">
+      &#x2795; Report Pothole
+    </button>
+  </div>
+</header>
+
+<!-- ═══ Stat bar ═══ -->
+<section class="stat-bar">
+  <div class="stat-card">
+    <span class="stat-num" id="stat-total">0</span>
+    <span class="stat-label">Total</span>
+  </div>
+  <div class="stat-card">
+    <span class="stat-num" id="stat-critical" style="color:var(--sev-critical)">0</span>
+    <span class="stat-label">Critical</span>
+  </div>
+  <div class="stat-card">
+    <span class="stat-num" id="stat-pending" style="color:var(--sev-medium)">0</span>
+    <span class="stat-label">Pending</span>
+  </div>
+  <div class="stat-card">
+    <span class="stat-num" id="stat-repaired" style="color:var(--sev-repaired)">0</span>
+    <span class="stat-label">Repaired</span>
+  </div>
+  <div class="stat-card">
+    <span class="stat-num" id="stat-grievances" style="color:var(--accent)">0</span>
+    <span class="stat-label">Grievances</span>
+  </div>
+</section>
+
+<!-- ═══ Map ═══ -->
+<div id="map"></div>
+
+<!-- ═══ Filter bar ═══ -->
+<nav class="filter-bar">
+  <button class="filter-btn active" data-filter="all">All</button>
+  <button class="filter-btn" data-filter="critical">Critical</button>
+  <button class="filter-btn" data-filter="high">High</button>
+  <button class="filter-btn" data-filter="medium">Medium</button>
+  <button class="filter-btn" data-filter="low">Low</button>
+  <button class="filter-btn" data-filter="repaired">Repaired</button>
+</nav>
+
+<!-- ═══ Detail panel ═══ -->
+<aside class="detail-panel" id="detail-panel">
+  <button class="close-btn" id="close-detail">&times;</button>
+  <h2 id="detail-title">Pothole #—</h2>
+  <div class="detail-field">
+    <label>Severity</label>
+    <span class="severity-badge" id="detail-severity"></span>
+  </div>
+  <div class="detail-field">
+    <label>Risk Score</label>
+    <div class="value" id="detail-risk"></div>
+  </div>
+  <div class="detail-field">
+    <label>Location</label>
+    <div class="value" id="detail-location"></div>
+  </div>
+  <div class="detail-field">
+    <label>First Seen</label>
+    <div class="value" id="detail-first-seen"></div>
+  </div>
+  <div class="detail-field">
+    <label>Last Seen</label>
+    <div class="value" id="detail-last-seen"></div>
+  </div>
+  <div class="detail-field">
+    <label>Confidence</label>
+    <div class="value" id="detail-confidence"></div>
+  </div>
+  <div class="detail-field">
+    <label>Detections</label>
+    <div class="value" id="detail-count"></div>
+  </div>
+  <div class="detail-field">
+    <label>Snapshots</label>
+    <div class="snapshot-gallery" id="detail-snapshots"></div>
+  </div>
+  <div class="detail-field">
+    <label>Description</label>
+    <div class="value" id="detail-description"></div>
+  </div>
+
+  <div class="grievance-list" id="detail-grievances"></div>
+
+  <div style="margin-top: 20px; display: flex; gap: 8px;">
+    <button class="btn btn-primary" id="btn-verify">&#128269; Verify</button>
+  </div>
+</aside>
+
+<!-- ═══ Manual report modal ═══ -->
+<div class="modal-overlay" id="report-modal">
+  <div class="modal">
+    <h2>&#128679; Report a Pothole</h2>
+
+    <div class="form-group">
+      <label>Photo</label>
+      <div class="drop-zone" id="drop-zone">
+        Click or drag a photo here
+      </div>
+      <input type="file" id="photo-input" accept="image/*" style="display:none" />
+    </div>
+
+    <div class="form-group">
+      <label>Latitude</label>
+      <input type="number" step="any" id="report-lat" placeholder="19.0760" />
+    </div>
+    <div class="form-group">
+      <label>Longitude</label>
+      <input type="number" step="any" id="report-lon" placeholder="72.8777" />
+    </div>
+    <div class="form-group">
+      <label>Severity</label>
+      <select id="report-severity">
+        <option value="low">Low</option>
+        <option value="medium" selected>Medium</option>
+        <option value="high">High</option>
+        <option value="critical">Critical</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label>Description</label>
+      <textarea id="report-desc" placeholder="Additional details…"></textarea>
+    </div>
+
+    <p style="font-size:12px; color:var(--text-secondary); margin-bottom:8px;">
+      💡 Tip: click on the map to auto‑fill coordinates
+    </p>
+
+    <div class="btn-row">
+      <button class="btn btn-ghost" id="cancel-report">Cancel</button>
+      <button class="btn btn-primary" id="submit-report">Submit Report</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ Verify modal ═══ -->
+<div class="modal-overlay" id="verify-modal">
+  <div class="modal">
+    <h2>&#128269; Verify Pothole Repair</h2>
+    <p id="verify-pothole-label" style="margin-bottom:16px; color:var(--text-secondary);"></p>
+
+    <div class="form-group">
+      <label>New Photo</label>
+      <div class="drop-zone" id="verify-drop-zone">
+        Click or drag a new photo here
+      </div>
+      <input type="file" id="verify-photo-input" accept="image/*" style="display:none" />
+    </div>
+
+    <div class="btn-row">
+      <button class="btn btn-ghost" id="cancel-verify">Cancel</button>
+      <button class="btn btn-primary" id="submit-verify">Verify</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ Toast container ═══ -->
+<div class="toast-container" id="toast-container"></div>
+
+<!-- ═══ Scripts ═══ -->
+<script src="app.js"></script>
+
+</body>
+</html>
