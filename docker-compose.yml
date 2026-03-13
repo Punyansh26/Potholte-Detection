@@ -1,0 +1,38 @@
+version: '3.8'
+
+services:
+  db:
+    image: postgis/postgis:15-3.4
+    environment:
+      POSTGRES_DB: pothole_db
+      POSTGRES_USER: pothole
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-password}
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U pothole -d pothole_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      DATABASE_URL: postgresql://pothole:${POSTGRES_PASSWORD:-password}@db:5432/pothole_db
+      STORAGE_PATH: /app/storage/snapshots
+      CPGRAMS_ENDPOINT: http://localhost:8000/mock/cpgrams/grievance
+      RISK_THRESHOLD: 80
+    volumes:
+      - snapshot_storage:/app/storage/snapshots
+    depends_on:
+      db:
+        condition: service_healthy
+    command: uvicorn backend.main:app --host 0.0.0.0 --port 8000
+
+volumes:
+  pgdata:
+  snapshot_storage:

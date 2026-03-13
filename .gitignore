@@ -1,0 +1,16 @@
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+.env
+*.db
+storage/
+runs/
+weights/
+*.onnx
+*.tflite
+*.engine
+node_modules/
+.venv/
+venv/
