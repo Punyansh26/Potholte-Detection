@@ -5,6 +5,7 @@ from __future__ import annotations
 import os
 import sys
 import logging
+from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -20,12 +21,24 @@ from config import settings
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+
+# ── Lifespan ────────────────────────────────────────────────────────────
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    logger.info("Initializing database…")
+    init_db()
+    logger.info("Database ready. Storage: %s", settings.storage_path)
+    yield
+
+
 # ── App ─────────────────────────────────────────────────────────────────
 
 app = FastAPI(
     title="Pothole Detection & Reporting API",
     version="1.0.0",
     description="Autonomous pothole detection with closed-loop grievance filing.",
+    lifespan=lifespan,
 )
 
 # CORS — allow everything for hackathon dev
@@ -36,6 +49,14 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+# ── Health (must be registered BEFORE catch-all static mount) ───────────
+
+@app.get("/health", tags=["system"])
+def health():
+    return {"status": "ok"}
+
 
 # ── Routers ─────────────────────────────────────────────────────────────
 
@@ -50,23 +71,7 @@ app.include_router(mock_cpgrams.router)
 os.makedirs(settings.storage_path, exist_ok=True)
 app.mount("/snapshots", StaticFiles(directory=settings.storage_path), name="snapshots")
 
-# Serve frontend
+# Serve frontend (catch-all — must be LAST)
 frontend_dir = os.path.join(os.path.dirname(__file__), "..", "frontend")
 if os.path.isdir(frontend_dir):
     app.mount("/", StaticFiles(directory=frontend_dir, html=True), name="frontend")
-
-
-# ── Startup ─────────────────────────────────────────────────────────────
-
-@app.on_event("startup")
-def on_startup():
-    logger.info("Initializing database…")
-    init_db()
-    logger.info("Database ready. Storage: %s", settings.storage_path)
-
-
-# ── Health ──────────────────────────────────────────────────────────────
-
-@app.get("/health", tags=["system"])
-def health():
-    return {"status": "ok"}

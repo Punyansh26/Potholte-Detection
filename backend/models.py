@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 from datetime import datetime
-from typing import List, Optional
-from pydantic import BaseModel, Field
+from typing import Any, List, Optional
+from pydantic import BaseModel, ConfigDict, Field
 
 
 # ── Detection (edge client → backend) ─────────────────────────────────
@@ -30,11 +30,13 @@ class DetectionResponse(BaseModel):
 # ── Pothole list / detail ─────────────────────────────────────────────
 
 class PotholeOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     pothole_id: int
     lat: float
     lon: float
-    first_seen: Optional[str] = None
-    last_seen: Optional[str] = None
+    first_seen: Any = None
+    last_seen: Any = None
     severity: str
     risk_score: float
     is_repaired: bool
@@ -43,9 +45,6 @@ class PotholeOut(BaseModel):
     snapshots: list = []
     description: str = ""
 
-    class Config:
-        from_attributes = True
-
 class PotholeDetail(PotholeOut):
     grievances: List[GrievanceOut] = []
 
@@ -53,16 +52,15 @@ class PotholeDetail(PotholeOut):
 # ── Grievance ─────────────────────────────────────────────────────────
 
 class GrievanceOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     id: int
     pothole_id: int
     grievance_system: str
     grievance_id: Optional[str] = None
     status: str
-    submitted_at: Optional[str] = None
-    sla_deadline: Optional[str] = None
-
-    class Config:
-        from_attributes = True
+    submitted_at: Any = None
+    sla_deadline: Any = None
 
 
 # ── Manual report ─────────────────────────────────────────────────────

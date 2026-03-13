@@ -20,7 +20,8 @@ def test_severity_medium():
     assert estimate_severity([200, 150, 340, 260], 640, 480) == "medium"
 
 def test_severity_high():
-    assert estimate_severity([100, 100, 350, 300], 640, 480) == "high"
+    # 200*150 = 30000 / 307200 ≈ 9.7% → high (8-15%)
+    assert estimate_severity([100, 100, 300, 250], 640, 480) == "high"
 
 def test_severity_critical():
     assert estimate_severity([50, 50, 500, 400], 640, 480) == "critical"
