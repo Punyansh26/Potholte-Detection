@@ -27,7 +27,6 @@ class DetectionRequest(BaseModel):
     shock_index: Optional[int] = None
     roughness_index: Optional[float] = None
     speed_kph: Optional[float] = None
-    altitude_m: Optional[float] = None
     pitch_deg: Optional[float] = None
     roll_deg: Optional[float] = None
     yaw_deg: Optional[float] = None
@@ -66,7 +65,6 @@ class LiveFrameDetection(BaseModel):
     shock_index: Optional[int] = None
     roughness_index: Optional[float] = None
     speed_kph: Optional[float] = None
-    altitude_m: Optional[float] = None
     pitch_deg: Optional[float] = None
     roll_deg: Optional[float] = None
     yaw_deg: Optional[float] = None
@@ -90,7 +88,6 @@ class LiveSensorTelemetry(BaseModel):
     shock_index: int = 0
     roughness_index: float = 0.0
     speed_kph: Optional[float] = None
-    altitude_m: Optional[float] = None
     pitch_deg: float = 0.0
     roll_deg: float = 0.0
     yaw_deg: float = 0.0
@@ -131,7 +128,6 @@ class PotholeOut(BaseModel):
     latest_shock_index: Optional[int] = None
     latest_roughness_index: Optional[float] = None
     latest_speed_kph: Optional[float] = None
-    latest_altitude_m: Optional[float] = None
     latest_pitch_deg: Optional[float] = None
     latest_roll_deg: Optional[float] = None
     latest_yaw_deg: Optional[float] = None
@@ -180,56 +176,13 @@ class VerificationResponse(BaseModel):
 # ── Mock CPGRAMS ──────────────────────────────────────────────────────
 
 class CpgramsPayload(BaseModel):
-    category: str = "Road/Pothole"
-    subject: str
+    title: str
     description: str
     latitude: float
     longitude: float
-    pincode: Optional[str] = None
     risk_score: float
-    severity_level: str = "high"
-    depth_cm: Optional[float] = None
-    area_sqm: Optional[float] = None
-    traffic_aadt: Optional[float] = None
-    speed_limit: Optional[float] = None
-    epdo_score: Optional[float] = None
-    attachments: List[str] = []
+    attachments: List[str] = []                   # base64 images
 
 class CpgramsResponse(BaseModel):
     ticket_id: str
     status: str = "Registered"
-
-
-# ── Citizen Reports & Escalations ─────────────────────────────────────
-
-class CitizenReportBase(BaseModel):
-    lat: float
-    lon: float
-    description: str = ""
-    severity: str = "medium"
-    snapshot_url: Optional[str] = None
-    reporter_id: Optional[str] = None
-
-class CitizenReportCreate(CitizenReportBase):
-    pothole_id: Optional[int] = None
-
-class CitizenReportOut(CitizenReportBase):
-    model_config = ConfigDict(from_attributes=True)
-    id: int
-    pothole_id: Optional[int] = None
-    submitted_at: Any
-
-class EscalationBase(BaseModel):
-    pothole_id: int
-    reason: str
-    escalation_level: int = 1
-
-class EscalationCreate(EscalationBase):
-    pass
-
-class EscalationOut(EscalationBase):
-    model_config = ConfigDict(from_attributes=True)
-    id: int
-    escalated_at: Any
-    resolved: bool
-    action_taken: Optional[str] = None

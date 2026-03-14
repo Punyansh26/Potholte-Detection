@@ -69,7 +69,6 @@ class DefectRegistry(Base):
     latest_shock_index = Column(Integer, nullable=True)
     latest_roughness_index = Column(Float, nullable=True)
     latest_speed_kph = Column(Float, nullable=True)
-    latest_altitude_m = Column(Float, nullable=True)
     latest_pitch_deg = Column(Float, nullable=True)
     latest_roll_deg = Column(Float, nullable=True)
     latest_yaw_deg = Column(Float, nullable=True)
@@ -94,38 +93,6 @@ class GrievanceLifecycle(Base):
     pothole = relationship("DefectRegistry", back_populates="grievances")
 
 
-class CitizenReport(Base):
-    """Citizen reported potholes."""
-    __tablename__ = "citizen_reports"
-
-    id = Column(Integer, primary_key=True, index=True)
-    pothole_id = Column(Integer, ForeignKey("defect_registry.pothole_id"), nullable=True)
-    lat = Column(Float, nullable=False)
-    lon = Column(Float, nullable=False)
-    description = Column(Text, default="")
-    severity = Column(String(20), default="medium")
-    snapshot_url = Column(String(255), nullable=True)
-    reporter_id = Column(String(100), nullable=True)
-    submitted_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
-
-    pothole = relationship("DefectRegistry", backref="citizen_reports")
-
-
-class Escalation(Base):
-    """Escalations for unresolved or critical issues."""
-    __tablename__ = "escalations"
-
-    id = Column(Integer, primary_key=True, index=True)
-    pothole_id = Column(Integer, ForeignKey("defect_registry.pothole_id"), nullable=False)
-    reason = Column(String(255), nullable=False)
-    escalation_level = Column(Integer, default=1)
-    escalated_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
-    resolved = Column(Boolean, default=False)
-    action_taken = Column(Text, nullable=True)
-
-    pothole = relationship("DefectRegistry", backref="escalations")
-
-
 # ── Create all tables ───────────────────────────────────────────────────
 
 def init_db():
@@ -147,7 +114,6 @@ def _ensure_hackathon_columns():
         "latest_shock_index": "INTEGER",
         "latest_roughness_index": "FLOAT",
         "latest_speed_kph": "FLOAT",
-        "latest_altitude_m": "FLOAT",
         "latest_pitch_deg": "FLOAT",
         "latest_roll_deg": "FLOAT",
         "latest_yaw_deg": "FLOAT",

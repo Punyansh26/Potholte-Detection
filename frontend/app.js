@@ -190,8 +190,8 @@ async function openDetail(pothole) {
     document.getElementById('detail-shock').textContent = pothole.latest_shock_index != null || pothole.latest_roughness_index != null
         ? `Shock ${pothole.latest_shock_index ?? '—'} | Roughness ${pothole.latest_roughness_index != null ? Number(pothole.latest_roughness_index).toFixed(1) : '—'}`
         : '—';
-    document.getElementById('detail-speed-altitude').textContent = pothole.latest_speed_kph != null || pothole.latest_altitude_m != null
-        ? `${pothole.latest_speed_kph != null ? `${Number(pothole.latest_speed_kph).toFixed(1)} km/h` : 'Speed —'} | ${pothole.latest_altitude_m != null ? `${Number(pothole.latest_altitude_m).toFixed(1)} m alt` : 'Ground platform'}`
+    document.getElementById('detail-speed').textContent = pothole.latest_speed_kph != null 
+        ? `${Number(pothole.latest_speed_kph).toFixed(1)} km/h`
         : '—';
     document.getElementById('detail-attitude').textContent = pothole.latest_pitch_deg != null || pothole.latest_roll_deg != null || pothole.latest_yaw_deg != null
         ? `P ${pothole.latest_pitch_deg != null ? Number(pothole.latest_pitch_deg).toFixed(1) : '—'}° | R ${pothole.latest_roll_deg != null ? Number(pothole.latest_roll_deg).toFixed(1) : '—'}° | Y ${pothole.latest_yaw_deg != null ? Number(pothole.latest_yaw_deg).toFixed(1) : '—'}°`

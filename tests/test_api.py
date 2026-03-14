@@ -107,11 +107,10 @@ def test_post_detection_persists_mock_imu_telemetry():
         "shock_index": 38,
         "roughness_index": 41.5,
         "speed_kph": 28.4,
-        "altitude_m": 12.2,
         "pitch_deg": 1.4,
         "roll_deg": -0.8,
         "yaw_deg": 87.3,
-        "sensor_source": "demo-drone-imu",
+        "sensor_source": "demo-vehicle-imu",
     }
     resp = client.post("/detections", json=payload)
     assert resp.status_code == 200
@@ -125,7 +124,6 @@ def test_post_detection_persists_mock_imu_telemetry():
     assert body["latest_shock_index"] == 38
     assert body["latest_roughness_index"] == 41.5
     assert body["latest_speed_kph"] == 28.4
-    assert body["latest_altitude_m"] == 12.2
     assert body["latest_pitch_deg"] == 1.4
     assert body["latest_roll_deg"] == -0.8
     assert body["latest_yaw_deg"] == 87.3
@@ -182,22 +180,12 @@ def test_live_detect_persists_detection(monkeypatch):
 
 
 def test_live_stream_telemetry_endpoint_returns_mock_sensor_data():
-    resp = client.get("/stream/telemetry?mode=vehicle")
+    resp = client.get("/stream/telemetry")
     assert resp.status_code == 200
     body = resp.json()["telemetry"]
     assert body["mode"] == "vehicle"
     assert "vibration_rms_g" in body
     assert "shock_index" in body
-    assert body["altitude_m"] is None
-
-
-def test_live_stream_telemetry_endpoint_supports_drone_mode():
-    resp = client.get("/stream/telemetry?mode=drone")
-    assert resp.status_code == 200
-    body = resp.json()["telemetry"]
-    assert body["mode"] == "drone"
-    assert body["altitude_m"] is not None
-    assert body["sensor_source"] == "demo-drone-imu"
 
 
 # ── GET /potholes ────────────────────────────────────────────────

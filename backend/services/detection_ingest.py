@@ -73,8 +73,6 @@ async def ingest_detection(req: DetectionRequest, db: Session) -> DetectionRespo
             existing.latest_roughness_index = req.roughness_index
         if req.speed_kph is not None:
             existing.latest_speed_kph = req.speed_kph
-        if req.altitude_m is not None:
-            existing.latest_altitude_m = req.altitude_m
         if req.pitch_deg is not None:
             existing.latest_pitch_deg = req.pitch_deg
         if req.roll_deg is not None:
@@ -107,7 +105,6 @@ async def ingest_detection(req: DetectionRequest, db: Session) -> DetectionRespo
             latest_shock_index=req.shock_index,
             latest_roughness_index=req.roughness_index,
             latest_speed_kph=req.speed_kph,
-            latest_altitude_m=req.altitude_m,
             latest_pitch_deg=req.pitch_deg,
             latest_roll_deg=req.roll_deg,
             latest_yaw_deg=req.yaw_deg,

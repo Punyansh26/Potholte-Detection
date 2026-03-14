@@ -74,7 +74,6 @@ async def detect_live_frame(req: LiveFrameRequest, db: Session = Depends(get_db)
                 shock_index=detection.get("shock_index"),
                 roughness_index=detection.get("roughness_index"),
                 speed_kph=detection.get("speed_kph"),
-                altitude_m=detection.get("altitude_m"),
                 pitch_deg=detection.get("pitch_deg"),
                 roll_deg=detection.get("roll_deg"),
                 yaw_deg=detection.get("yaw_deg"),

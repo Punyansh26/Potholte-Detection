@@ -28,7 +28,6 @@
   const confValue   = document.getElementById('conf-value');
   const skipSlider  = document.getElementById('skip-slider');
   const skipValue   = document.getElementById('skip-value');
-  const sensorMode  = document.getElementById('sensor-mode');
 
   const badgeEl     = document.getElementById('live-status-badge');
   const statusText  = document.getElementById('live-status-text');
@@ -66,10 +65,6 @@
     skipValue.textContent = skipSlider.value;
     if (connected) reconnect();
   });
-  sensorMode.addEventListener('change', () => {
-    if (connected) reconnect();
-    pollTelemetry();
-  });
 
   // ── Connect / Disconnect ────────────────────────────────────────
   btnStart.addEventListener('click', connect);
@@ -79,12 +74,11 @@
     const src  = camUrlInput.value.trim() || 'http://192.168.0.103:8080/video';
     const conf = confSlider.value;
     const skip = skipSlider.value;
-    const mode = sensorMode.value;
-    return `${API}/stream/video?source=${encodeURIComponent(src)}&conf=${conf}&skip=${skip}&post=true&mode=${encodeURIComponent(mode)}`;
+    return `${API}/stream/video?source=${encodeURIComponent(src)}&conf=${conf}&skip=${skip}&post=true`;
   }
 
   function buildTelemetryUrl() {
-    return `${API}/stream/telemetry?mode=${encodeURIComponent(sensorMode.value)}`;
+    return `${API}/stream/telemetry`;
   }
 
   function connect() {
@@ -240,9 +234,6 @@
     sensorSpeedEl.textContent = telemetry.speed_kph != null
       ? `${fmtNumber(telemetry.speed_kph, 1)} km/h`
       : '--';
-    sensorAltitudeEl.textContent = telemetry.altitude_m != null
-      ? `Altitude ${fmtNumber(telemetry.altitude_m, 1)} m`
-      : 'Altitude ground';
     sensorAttitudeEl.textContent = `P ${fmtNumber(telemetry.pitch_deg, 1)}° / R ${fmtNumber(telemetry.roll_deg, 1)}°`;
     sensorYawEl.textContent = `Yaw ${fmtNumber(telemetry.yaw_deg, 1)}°`;
     sensorAdvisoryEl.textContent = telemetry.advisory || 'Monitoring road surface';
