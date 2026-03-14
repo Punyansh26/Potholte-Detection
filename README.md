@@ -51,6 +51,9 @@ python detector/edge_client.py --source dashcam.mp4
 # Phone IP camera stream
 python detector/edge_client.py --source http://192.168.1.25:8080/video
 
+# Phone stream + highlighted preview + phone GPS (if app exposes it)
+python detector/edge_client.py --source http://192.168.1.25:8080 --api http://localhost:8003 --preview --phone-gps
+
 # Image directory
 python detector/edge_client.py --source ./test_images/
 ```
@@ -73,6 +76,8 @@ python detector/edge_client.py --source http://PHONE_IP:8080/video
 
 4. If OpenCV cannot keep the MJPEG stream open, the client now falls back automatically to snapshot polling through `http://PHONE_IP:8080/shot.jpg`.
 5. Keep phone and laptop on the same Wi-Fi, and disable mobile-data switching/VPN on the phone if the IP changes or stops responding.
+6. Add `--preview` to show live bounding boxes and labels (severity, confidence, pothole id, risk score) on the camera feed.
+7. Add `--phone-gps` to fetch coordinates from the phone host (`/gps.json`, `/sensors.json`, `/status.json`) when available.
 
 ## Docker (PostGIS)
 ```bash

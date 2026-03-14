@@ -59,6 +59,101 @@ def post_detection(det: dict, api_url: str) -> dict | None:
         return None
 
 
+def _phone_base_url(source) -> str | None:
+    if not isinstance(source, str) or not _is_http_source(source):
+        return None
+    parsed = urlparse(source)
+    return f"{parsed.scheme}://{parsed.netloc}"
+
+
+def _extract_lat_lon(payload) -> tuple[float, float] | None:
+    """Extract lat/lon values from nested JSON payloads."""
+    found = {}
+
+    def walk(node):
+        if isinstance(node, dict):
+            for key, value in node.items():
+                key_l = str(key).lower()
+                if key_l in ("lat", "latitude"):
+                    try:
+                        found["lat"] = float(value)
+                    except Exception:
+                        pass
+                if key_l in ("lon", "lng", "longitude"):
+                    try:
+                        found["lon"] = float(value)
+                    except Exception:
+                        pass
+                walk(value)
+        elif isinstance(node, list):
+            for item in node:
+                walk(item)
+
+    walk(payload)
+    if "lat" in found and "lon" in found:
+        return found["lat"], found["lon"]
+    return None
+
+
+def _fetch_phone_gps(source: str) -> tuple[float, float] | None:
+    """Try common phone-camera endpoints that may expose GPS coordinates."""
+    base = _phone_base_url(source)
+    if not base:
+        return None
+
+    candidates = [
+        f"{base}/gps.json",
+        f"{base}/sensors.json",
+        f"{base}/status.json",
+    ]
+
+    for endpoint in candidates:
+        try:
+            resp = httpx.get(endpoint, timeout=3)
+            resp.raise_for_status()
+            loc = _extract_lat_lon(resp.json())
+            if loc:
+                return loc
+        except Exception:
+            continue
+    return None
+
+
+def _draw_preview(frame: np.ndarray, detections: list[dict], posted: list[dict | None], lat: float, lon: float):
+    """Draw bounding boxes and metadata onto the preview frame."""
+    out = frame.copy()
+    for idx, det in enumerate(detections):
+        bbox = det.get("bbox") or []
+        if len(bbox) != 4:
+            continue
+
+        x1, y1, x2, y2 = [int(v) for v in bbox]
+        sev = str(det.get("severity_est", "low")).lower()
+        conf = float(det.get("confidence", 0.0))
+        klass = str(det.get("class_name", "pothole"))
+        result = posted[idx] if idx < len(posted) else None
+
+        color_map = {
+            "low": (34, 197, 94),
+            "medium": (234, 179, 8),
+            "high": (249, 115, 22),
+            "critical": (239, 68, 68),
+        }
+        color = color_map.get(sev, (34, 211, 238))
+
+        cv2.rectangle(out, (x1, y1), (x2, y2), color, 2)
+        label = f"{klass} {sev} {conf:.2f}"
+        if result:
+            label += f" | id:{result.get('pothole_id')} risk:{result.get('risk_score')}"
+
+        y_text = max(20, y1 - 8)
+        cv2.putText(out, label, (x1, y_text), cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 2, cv2.LINE_AA)
+
+    footer = f"Lat:{lat:.6f} Lon:{lon:.6f} Detections:{len(detections)}"
+    cv2.putText(out, footer, (10, out.shape[0] - 12), cv2.FONT_HERSHEY_SIMPLEX, 0.55, (240, 240, 240), 2, cv2.LINE_AA)
+    return out
+
+
 def _is_http_source(source: str) -> bool:
     return isinstance(source, str) and source.startswith(("http://", "https://"))
 
@@ -163,6 +258,9 @@ def run_edge_client(args):
     if source.isdigit():
         source = int(source)
 
+    phone_gps = None
+    phone_gps_last = 0.0
+
     # ── Image directory mode ──
     if isinstance(source, str) and os.path.isdir(source):
         images = sorted(glob.glob(os.path.join(source, "*.jpg")) +
@@ -200,20 +298,41 @@ def run_edge_client(args):
                 gps_idx += 1
                 lat, lon = gps["lat"], gps["lon"]
             else:
-                lat, lon = args.lat, args.lon
+                if args.phone_gps and isinstance(source, str) and _is_http_source(source):
+                    now = time.time()
+                    if (now - phone_gps_last) >= args.phone_gps_interval:
+                        phone_gps = _fetch_phone_gps(source)
+                        phone_gps_last = now
+                        if phone_gps:
+                            print(f"Using phone GPS: ({phone_gps[0]:.6f}, {phone_gps[1]:.6f})")
+                lat, lon = phone_gps if phone_gps else (args.lat, args.lon)
 
             dets = detector.detect_image(frame, args.camera_id, lat, lon)
             if dets:
                 print(f"\n[Frame {frame_idx}] {len(dets)} detection(s) @ ({lat:.4f}, {lon:.4f}) from {active_source}")
+                posted_results = []
                 for d in dets:
-                    post_detection(d, api_url)
+                    posted_results.append(post_detection(d, api_url))
+            else:
+                posted_results = []
+
+            if args.preview:
+                preview = _draw_preview(frame, dets, posted_results, lat, lon)
+                cv2.imshow("PotholeGuard Live Detection", preview)
+                key = cv2.waitKey(1) & 0xFF
+                if key in (ord("q"), 27):
+                    print("Preview stopped by user")
+                    break
             time.sleep(0.1)
     except KeyboardInterrupt:
         print("\nStopped by user")
+    except cv2.error as exc:
+        print(f"OpenCV preview error: {exc}. Run without --preview in a headless environment.")
     except RuntimeError as exc:
         print(str(exc))
     finally:
-        pass
+        if args.preview:
+            cv2.destroyAllWindows()
 
 
 if __name__ == "__main__":
@@ -226,6 +345,9 @@ if __name__ == "__main__":
     parser.add_argument("--lat", type=float, default=settings.default_lat)
     parser.add_argument("--lon", type=float, default=settings.default_lon)
     parser.add_argument("--skip", type=int, default=5, help="Process every Nth frame")
+    parser.add_argument("--preview", action="store_true", help="Show live frame preview with highlighted detections")
+    parser.add_argument("--phone-gps", action="store_true", help="Try to read GPS coordinates from the phone camera host")
+    parser.add_argument("--phone-gps-interval", type=float, default=3.0, help="Seconds between phone GPS fetch attempts")
     parser.add_argument("--gps-track", default=None, help="JSON file with GPS coordinates")
     parser.add_argument("--snapshot-interval", type=float, default=0.35, help="Seconds between IP camera snapshot polls")
     args = parser.parse_args()
