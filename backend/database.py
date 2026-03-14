@@ -94,6 +94,38 @@ class GrievanceLifecycle(Base):
     pothole = relationship("DefectRegistry", back_populates="grievances")
 
 
+class CitizenReport(Base):
+    """Citizen reported potholes."""
+    __tablename__ = "citizen_reports"
+
+    id = Column(Integer, primary_key=True, index=True)
+    pothole_id = Column(Integer, ForeignKey("defect_registry.pothole_id"), nullable=True)
+    lat = Column(Float, nullable=False)
+    lon = Column(Float, nullable=False)
+    description = Column(Text, default="")
+    severity = Column(String(20), default="medium")
+    snapshot_url = Column(String(255), nullable=True)
+    reporter_id = Column(String(100), nullable=True)
+    submitted_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+
+    pothole = relationship("DefectRegistry", backref="citizen_reports")
+
+
+class Escalation(Base):
+    """Escalations for unresolved or critical issues."""
+    __tablename__ = "escalations"
+
+    id = Column(Integer, primary_key=True, index=True)
+    pothole_id = Column(Integer, ForeignKey("defect_registry.pothole_id"), nullable=False)
+    reason = Column(String(255), nullable=False)
+    escalation_level = Column(Integer, default=1)
+    escalated_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+    resolved = Column(Boolean, default=False)
+    action_taken = Column(Text, nullable=True)
+
+    pothole = relationship("DefectRegistry", backref="escalations")
+
+
 # ── Create all tables ───────────────────────────────────────────────────
 
 def init_db():

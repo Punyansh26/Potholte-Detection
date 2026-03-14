@@ -53,13 +53,52 @@ def compute_risk_score(
     confidence: float = 0.5,
     exposure_factor: float = 0.5,
     depth_cm: float | None = None,
+    area_sqm: float | None = None,
+    aadt: float | None = None,
+    speed_limit: float | None = None,
+    epdo_score: float | None = None,
     sensor_fusion_score: float | None = None,
 ) -> float:
-    """Return a 0–100 risk score."""
-    sw = _SEVERITY_WEIGHTS.get(severity, 0.2)
-    score = sw * 40 + confidence * 20 + exposure_factor * 40
+    """
+    Return a 0–100 risk score.
+    Implements Phase-1 Module 1 weighting: Depth, Area, Traffic/AADT, SpeedLimit, CrashHistory EPDO.
+    """
+    score = 0.0
+
+    # 1. Depth (Weight: up to 30 pts)
     if depth_cm is not None:
-        score += min(max(depth_cm, 0), 20) / 20 * 8
+        score += min(max(depth_cm, 0) / 15.0 * 30, 30)
+    else:
+        sw = _SEVERITY_WEIGHTS.get(severity, 0.2)
+        score += sw * 30
+
+    # 2. Area (Weight: up to 20 pts)
+    if area_sqm is not None:
+        score += min(max(area_sqm, 0) / 2.0 * 20, 20)
+    else:
+        score += exposure_factor * 20
+        
+    # 3. Traffic/AADT (Weight: up to 20 pts)
+    if aadt is not None:
+        score += min(max(aadt, 0) / 50000.0 * 20, 20)
+    else:
+        score += 10 # Default average traffic
+
+    # 4. Speed Limit (Weight: up to 15 pts)
+    if speed_limit is not None:
+        score += min(max(speed_limit, 0) / 100.0 * 15, 15)
+    else:
+        score += 7.5 # Default average speed limit
+
+    # 5. Crash History EPDO (Weight: up to 15 pts)
+    if epdo_score is not None:
+        score += min(max(epdo_score, 0) / 50.0 * 15, 15)
+    else:
+        # Without EPDO, give some fallback points from confidence
+        score += confidence * 15
+
+    # Bonus: Sensor Fusion
     if sensor_fusion_score is not None:
-        score += min(max(sensor_fusion_score, 0), 1) * 4
+        score += min(max(sensor_fusion_score, 0), 1) * 5
+
     return round(min(max(score, 0), 100), 1)

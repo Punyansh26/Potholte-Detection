@@ -180,13 +180,56 @@ class VerificationResponse(BaseModel):
 # ── Mock CPGRAMS ──────────────────────────────────────────────────────
 
 class CpgramsPayload(BaseModel):
-    title: str
+    category: str = "Road/Pothole"
+    subject: str
     description: str
     latitude: float
     longitude: float
+    pincode: Optional[str] = None
     risk_score: float
-    attachments: List[str] = []                   # base64 images
+    severity_level: str = "high"
+    depth_cm: Optional[float] = None
+    area_sqm: Optional[float] = None
+    traffic_aadt: Optional[float] = None
+    speed_limit: Optional[float] = None
+    epdo_score: Optional[float] = None
+    attachments: List[str] = []
 
 class CpgramsResponse(BaseModel):
     ticket_id: str
     status: str = "Registered"
+
+
+# ── Citizen Reports & Escalations ─────────────────────────────────────
+
+class CitizenReportBase(BaseModel):
+    lat: float
+    lon: float
+    description: str = ""
+    severity: str = "medium"
+    snapshot_url: Optional[str] = None
+    reporter_id: Optional[str] = None
+
+class CitizenReportCreate(CitizenReportBase):
+    pothole_id: Optional[int] = None
+
+class CitizenReportOut(CitizenReportBase):
+    model_config = ConfigDict(from_attributes=True)
+    id: int
+    pothole_id: Optional[int] = None
+    submitted_at: Any
+
+class EscalationBase(BaseModel):
+    pothole_id: int
+    reason: str
+    escalation_level: int = 1
+
+class EscalationCreate(EscalationBase):
+    pass
+
+class EscalationOut(EscalationBase):
+    model_config = ConfigDict(from_attributes=True)
+    id: int
+    escalated_at: Any
+    resolved: bool
+    action_taken: Optional[str] = None
