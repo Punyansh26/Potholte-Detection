@@ -9,15 +9,49 @@ from __future__ import annotations
 import json
 import time
 import base64
+import os
 import cv2
 import numpy as np
 from pathlib import Path
 from typing import List, Dict, Any
 
 try:
-    from ultralytics import YOLO
+    from ultralyticsplus import YOLO
+    _YOLO_IMPORT_HINT = "ultralyticsplus"
 except ImportError:
-    YOLO = None   # allow import without ultralytics for lightweight envs
+    try:
+        from ultralytics import YOLO
+        _YOLO_IMPORT_HINT = "ultralytics"
+    except ImportError:
+        YOLO = None   # allow import without ultralytics for lightweight envs
+        _YOLO_IMPORT_HINT = "none"
+
+
+DEFAULT_MODEL_ID = "keremberke/yolov8n-pothole-segmentation"
+
+
+def _register_torch_safe_globals() -> None:
+    """Allow trusted Ultralytics model classes for PyTorch >= 2.6 safe loading."""
+    try:
+        import torch
+        from ultralytics.nn.tasks import (
+            ClassificationModel,
+            DetectionModel,
+            OBBModel,
+            PoseModel,
+            SegmentationModel,
+        )
+
+        torch.serialization.add_safe_globals([
+            ClassificationModel,
+            DetectionModel,
+            SegmentationModel,
+            PoseModel,
+            OBBModel,
+        ])
+    except Exception:
+        # Safe-global registration is best-effort for compatibility.
+        pass
 
 
 # Severity estimation from bounding-box area relative to frame
@@ -37,17 +71,42 @@ def _estimate_severity(bbox: list, frame_w: int, frame_h: int) -> str:
 class PotholeDetector:
     """Thin wrapper around a YOLOv8 model for pothole detection."""
 
-    def __init__(self, model_path: str = "yolov8n.pt", conf_threshold: float = 0.25):
+    def __init__(self, model_path: str | None = None, conf_threshold: float = 0.25):
         if YOLO is None:
-            raise RuntimeError("ultralytics is not installed — pip install ultralytics")
-        self.model = YOLO(model_path)
+            raise RuntimeError(
+                "YOLO backend is not installed. Install ultralyticsplus (preferred) or ultralytics."
+            )
+        resolved_model = model_path or os.environ.get("YOLO_MODEL", DEFAULT_MODEL_ID)
+        iou_threshold = float(os.environ.get("YOLO_IOU", "0.45"))
+        agnostic_nms = os.environ.get("YOLO_AGNOSTIC_NMS", "false").strip().lower() == "true"
+        max_det = int(os.environ.get("YOLO_MAX_DET", "1000"))
+
+        # PyTorch >= 2.6 defaults to weights_only=True; this trusted model requires full ckpt load.
+        os.environ.setdefault("TORCH_FORCE_NO_WEIGHTS_ONLY_LOAD", "1")
+        _register_torch_safe_globals()
+        self.model = YOLO(resolved_model)
         self.conf_threshold = conf_threshold
+        self.model.overrides["conf"] = conf_threshold
+        self.model.overrides["iou"] = iou_threshold
+        self.model.overrides["agnostic_nms"] = agnostic_nms
+        self.model.overrides["max_det"] = max_det
+        self.model_path = resolved_model
+        self.iou_threshold = iou_threshold
+        self.agnostic_nms = agnostic_nms
+        self.max_det = max_det
 
     def detect_image(self, img: np.ndarray, camera_id: str = "edge-001",
                      lat: float = 0.0, lon: float = 0.0) -> List[Dict[str, Any]]:
         """Run inference on a single BGR image and return detection dicts."""
         h, w = img.shape[:2]
-        results = self.model(img, conf=self.conf_threshold, verbose=False)
+        results = self.model(
+            img,
+            conf=self.conf_threshold,
+            iou=self.iou_threshold,
+            agnostic_nms=self.agnostic_nms,
+            max_det=self.max_det,
+            verbose=False,
+        )
         detections = []
 
         for r in results:
@@ -111,7 +170,7 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(description="Run YOLOv8 pothole inference")
     parser.add_argument("--source", default="0", help="Webcam id, video path, or image path")
-    parser.add_argument("--model", default="yolov8n.pt", help="Model path (.pt or .onnx)")
+    parser.add_argument("--model", default=os.environ.get("YOLO_MODEL", DEFAULT_MODEL_ID), help="Model id/path (.pt/.onnx/HF repo id)")
     parser.add_argument("--conf", type=float, default=0.25, help="Confidence threshold")
     parser.add_argument("--lat", type=float, default=19.0760)
     parser.add_argument("--lon", type=float, default=72.8777)
@@ -121,6 +180,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     detector = PotholeDetector(args.model, args.conf)
+    print(f"Using YOLO backend={_YOLO_IMPORT_HINT} model={detector.model_path}")
 
     src = args.source
     if src.isdigit():

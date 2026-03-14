@@ -64,15 +64,48 @@ _model = None
 _model_lock = threading.Lock()
 
 
+def _register_torch_safe_globals() -> None:
+    """Allow trusted Ultralytics classes for PyTorch >= 2.6 checkpoints."""
+    try:
+        import torch
+        from ultralytics.nn.tasks import (
+            ClassificationModel,
+            DetectionModel,
+            OBBModel,
+            PoseModel,
+            SegmentationModel,
+        )
+
+        torch.serialization.add_safe_globals([
+            ClassificationModel,
+            DetectionModel,
+            SegmentationModel,
+            PoseModel,
+            OBBModel,
+        ])
+    except Exception:
+        pass
+
+
 def _get_model():
     global _model
     if _model is None:
         with _model_lock:
             if _model is None:
                 try:
-                    from ultralytics import YOLO
-                    model_path = os.environ.get("YOLO_MODEL", "yolov8n.pt")
+                    try:
+                        from ultralyticsplus import YOLO
+                    except ImportError:
+                        from ultralytics import YOLO
+
+                    os.environ.setdefault("TORCH_FORCE_NO_WEIGHTS_ONLY_LOAD", "1")
+                    _register_torch_safe_globals()
+                    model_path = os.environ.get("YOLO_MODEL", settings.yolo_model)
                     _model = YOLO(model_path)
+                    _model.overrides["conf"] = settings.yolo_conf
+                    _model.overrides["iou"] = settings.yolo_iou
+                    _model.overrides["agnostic_nms"] = settings.yolo_agnostic_nms
+                    _model.overrides["max_det"] = settings.yolo_max_det
                     logger.info("YOLO model loaded: %s", model_path)
                 except Exception as e:
                     logger.error("Failed to load YOLO model: %s", e)

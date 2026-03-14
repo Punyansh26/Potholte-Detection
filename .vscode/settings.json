@@ -1,5 +1,6 @@
 {
   "python.defaultInterpreterPath": "D:\\Programs\\miniconda3\\envs\\potholepy\\python.exe",
+  "python.condaPath": "D:\\Programs\\miniconda3\\condabin\\conda.bat",
   "python.terminal.activateEnvironment": true,
   "python.terminal.activateEnvInCurrentTerminal": true
 }

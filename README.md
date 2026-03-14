@@ -24,6 +24,7 @@ An end-to-end prototype that **detects potholes** from camera/video, **geotags &
 
 ### 1. Install dependencies
 ```bash
+conda activate potholepy
 pip install -r requirements.txt
 ```
 
@@ -34,6 +35,7 @@ cp .env.example .env
 
 ### 3. Start the backend
 ```bash
+conda activate potholepy
 python -m uvicorn backend.main:app --reload --port 8003
 ```
 
@@ -42,6 +44,8 @@ Visit **http://localhost:8003** in your browser.
 
 ### 5. Run the edge detector
 ```bash
+conda activate potholepy
+
 # Webcam
 python detector/edge_client.py --source 0
 
@@ -58,6 +62,15 @@ http://192.168.0.103:8080/
 
 # Image directory
 python detector/edge_client.py --source ./test_images/
+```
+
+Default model is loaded from UltralyticsPlus/HuggingFace:
+`keremberke/yolov8n-pothole-segmentation`
+
+You can override it at runtime:
+
+```bash
+python detector/edge_client.py --model keremberke/yolov8n-pothole-segmentation --source 0
 ```
 
 ### 6. Use a phone camera

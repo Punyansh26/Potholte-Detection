@@ -21,6 +21,11 @@ class Settings(BaseSettings):
     default_lat: float = 19.0760
     default_lon: float = 72.8777
     camera_id: str = "edge-001"
+    yolo_model: str = "keremberke/yolov8n-pothole-segmentation"
+    yolo_conf: float = 0.25
+    yolo_iou: float = 0.45
+    yolo_agnostic_nms: bool = False
+    yolo_max_det: int = 1000
 
     # Deduplication
     dedup_radius_meters: float = 2.5

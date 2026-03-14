@@ -366,7 +366,11 @@ def run_edge_client(args):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Edge pothole detection client")
     parser.add_argument("--source", default="0", help="Webcam id, stream URL, video path, or image dir")
-    parser.add_argument("--model", default="yolov8n.pt", help="YOLO model path")
+    parser.add_argument(
+        "--model",
+        default=os.environ.get("YOLO_MODEL", "keremberke/yolov8n-pothole-segmentation"),
+        help="YOLO model id/path",
+    )
     parser.add_argument("--conf", type=float, default=0.25, help="Confidence threshold")
     parser.add_argument("--api", default="http://localhost:8003", help="Backend API URL")
     parser.add_argument("--camera-id", default=settings.camera_id)
