@@ -49,10 +49,12 @@ python detector/edge_client.py --source 0
 python detector/edge_client.py --source dashcam.mp4
 
 # Phone IP camera stream
-python detector/edge_client.py --source http://192.168.1.25:8080/video
+python detector/edge_client.py --source http://192.168.0.103:8080//video
 
 # Phone stream + highlighted preview + phone GPS (if app exposes it)
-python detector/edge_client.py --source http://192.168.1.25:8080 --api http://localhost:8003 --preview --phone-gps
+python detector/edge_client.py --source http://192.168.0.103:8080/ --api http://localhost:8003 --preview --phone-gps
+
+http://192.168.0.103:8080/
 
 # Image directory
 python detector/edge_client.py --source ./test_images/

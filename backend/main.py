@@ -15,7 +15,7 @@ from fastapi.staticfiles import StaticFiles
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 from backend.database import init_db
-from backend.routers import detections, manual_report, verification, mock_cpgrams
+from backend.routers import detections, manual_report, verification, mock_cpgrams, stream
 from config import settings
 
 logging.basicConfig(level=logging.INFO)
@@ -64,6 +64,7 @@ app.include_router(detections.router)
 app.include_router(manual_report.router)
 app.include_router(verification.router)
 app.include_router(mock_cpgrams.router)
+app.include_router(stream.router)
 
 # ── Static files ────────────────────────────────────────────────────────
 

@@ -218,6 +218,18 @@ function closeDetail() {
 // ── Events ───────────────────────────────────────────────────────
 
 function bindEvents() {
+    // ── Tab switching ─────────────────────────────────────────────
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+            btn.classList.add('active');
+            document.getElementById(`tab-${btn.dataset.tab}`).classList.add('active');
+            // Invalidate map size when switching back to map tab
+            if (btn.dataset.tab === 'map' && map) setTimeout(() => map.invalidateSize(), 100);
+        });
+    });
+
     // Filter buttons
     document.querySelectorAll('.filter-btn').forEach(btn => {
         btn.addEventListener('click', () => {
@@ -250,15 +262,6 @@ function bindEvents() {
     document.getElementById('cancel-verify').addEventListener('click', closeVerifyModal);
     document.getElementById('submit-verify').addEventListener('click', submitVerify);
     setupDropZone('verify-drop-zone', 'verify-photo-input', (b64) => { verifyB64 = b64; });
-
-    // Live camera
-    document.getElementById('btn-live-toggle').addEventListener('click', toggleLiveCamera);
-    document.getElementById('btn-live-switch').addEventListener('click', switchLiveCamera);
-    document.getElementById('live-video').addEventListener('loadedmetadata', () => {
-        syncLiveOverlaySize();
-        document.getElementById('live-stage').classList.add('video-ready');
-    });
-    window.addEventListener('resize', syncLiveOverlaySize);
 }
 
 // ── Report modal ─────────────────────────────────────────────────
@@ -394,6 +397,8 @@ function showToast(type, message) {
     container.appendChild(toast);
     setTimeout(() => { toast.style.opacity = '0'; setTimeout(() => toast.remove(), 300); }, 4000);
 }
+// Expose globally so camera.js can use it
+window.showToast = showToast;
 
 // ── Helpers ──────────────────────────────────────────────────────
 

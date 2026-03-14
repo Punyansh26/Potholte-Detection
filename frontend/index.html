@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Pothole Detection — Live Dashboard</title>
-  <meta name="description" content="Autonomous pothole detection and closed-loop reporting dashboard with real-time map visualization." />
+  <title>PotholeGuard — Live Dashboard</title>
+  <meta name="description" content="Autonomous pothole detection and closed-loop reporting dashboard with real-time map and live camera." />
 
   <!-- Leaflet -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
@@ -17,14 +17,17 @@
 
 <!-- ═══ Top bar ═══ -->
 <header class="topbar">
-  <div class="logo">PotholeGuard <span>v1.0</span></div>
+  <div class="topbar-left">
+    <div class="logo">PotholeGuard <span>v1.0</span></div>
+    <!-- Tab nav -->
+    <nav class="tab-nav">
+      <button class="tab-btn active" data-tab="map">🗺️ Map</button>
+      <button class="tab-btn" data-tab="live">📷 Live Cam</button>
+    </nav>
+  </div>
   <div class="topbar-actions">
-    <button class="btn btn-ghost" id="btn-refresh" title="Refresh data">
-      &#x21bb; Refresh
-    </button>
-    <button class="btn btn-primary" id="btn-report" title="File a manual report">
-      &#x2795; Report Pothole
-    </button>
+    <button class="btn btn-ghost" id="btn-refresh" title="Refresh data">⟳ Refresh</button>
+    <button class="btn btn-primary" id="btn-report">&#x2795; Report Pothole</button>
   </div>
 </header>
 
@@ -52,60 +55,107 @@
   </div>
 </section>
 
-<section class="live-panel" id="live-panel">
-  <div class="live-panel-header">
-    <div>
-      <p class="live-kicker">Live Detection</p>
-      <h2>Camera Stream</h2>
+<!-- ═══════════════════════════════════════════════ -->
+<!--  TAB 1 — MAP VIEW                              -->
+<!-- ═══════════════════════════════════════════════ -->
+<div id="tab-map" class="tab-content active">
+
+  <!-- Map -->
+  <div id="map"></div>
+
+  <!-- Filter bar -->
+  <nav class="filter-bar">
+    <button class="filter-btn active" data-filter="all">All</button>
+    <button class="filter-btn" data-filter="critical">Critical</button>
+    <button class="filter-btn" data-filter="high">High</button>
+    <button class="filter-btn" data-filter="medium">Medium</button>
+    <button class="filter-btn" data-filter="low">Low</button>
+    <button class="filter-btn" data-filter="repaired">Repaired</button>
+  </nav>
+
+</div>
+
+<!-- ═══════════════════════════════════════════════ -->
+<!--  TAB 2 — LIVE CAM VIEW                         -->
+<!-- ═══════════════════════════════════════════════ -->
+<div id="tab-live" class="tab-content">
+
+  <div class="live-view">
+
+    <!-- Left: video feed -->
+    <div class="live-feed-col">
+      <div class="live-feed-header">
+        <div>
+          <div class="live-kicker">Real-time Detection</div>
+          <h2>Live Camera Feed</h2>
+        </div>
+        <span class="live-badge idle" id="live-status-badge">● Idle</span>
+      </div>
+
+      <!-- Video stage -->
+      <div class="live-stage" id="live-stage">
+        <video id="live-video" autoplay muted playsinline></video>
+        <canvas id="live-overlay"></canvas>
+        <div class="live-placeholder" id="live-placeholder">
+          <div class="live-placeholder-icon">📷</div>
+          <p>Press <strong>Start Camera</strong> to begin detection</p>
+          <p class="live-placeholder-sub">Rear camera preferred on phones.</p>
+        </div>
+      </div>
+
+      <!-- Camera controls -->
+      <div class="live-controls">
+        <button class="btn btn-primary" id="btn-cam-start">▶ Start Camera</button>
+        <button class="btn btn-ghost" id="btn-cam-flip" style="display:none">🔄 Flip</button>
+        <button class="btn btn-ghost" id="btn-cam-stop" style="display:none">■ Stop</button>
+        <div style="flex:1"></div>
+        <label style="font-size:12px; color:var(--text-secondary); align-self:center">
+          Confidence
+          <input type="range" id="conf-slider" min="0.1" max="0.9" step="0.05" value="0.25"
+            style="width:90px; vertical-align:middle; margin-left:6px; accent-color:var(--accent)">
+          <span id="conf-value" style="color:var(--text-primary); font-weight:600">25%</span>
+        </label>
+      </div>
+
+      <!-- hidden canvas for frame capture -->
+      <canvas id="capture-canvas" style="display:none"></canvas>
     </div>
-    <span class="live-status idle" id="live-status">Idle</span>
-  </div>
 
-  <div class="live-stage" id="live-stage">
-    <video id="live-video" autoplay muted playsinline></video>
-    <canvas id="live-overlay"></canvas>
-    <div class="live-empty" id="live-empty">
-      Start the camera to stream pothole detection. On phones, the dashboard will prefer the rear camera.
+    <!-- Right: stats & detections -->
+    <div class="live-info-col">
+
+      <div class="live-info-card">
+        <label>Status</label>
+        <div class="value" id="live-status-text">Camera not started</div>
+      </div>
+      <div class="live-info-card">
+        <label>Last Frame</label>
+        <div class="value" id="live-det-count">— detections</div>
+      </div>
+      <div class="live-info-card">
+        <label>GPS Used</label>
+        <div class="value" id="live-gps">Dashboard defaults</div>
+      </div>
+      <div class="live-info-card">
+        <label>Total Sent</label>
+        <div class="value" id="live-total-sent">0</div>
+      </div>
+
+      <!-- Recent detections list -->
+      <div class="live-det-list-header">Recent Detections</div>
+      <div class="live-det-list" id="live-det-list">
+        <div class="live-det-empty">No detections yet</div>
+      </div>
+
+      <div class="live-hint">
+        💡 Detections are automatically saved to the DB and appear on the Map tab.
+      </div>
     </div>
+
   </div>
+</div>
 
-  <div class="live-actions">
-    <button class="btn btn-primary" id="btn-live-toggle">Start Camera</button>
-    <button class="btn btn-ghost" id="btn-live-switch">Flip Camera</button>
-  </div>
-
-  <div class="live-metrics">
-    <div class="live-metric">
-      <label>Last Frame</label>
-      <div class="value" id="live-detection-count">0 detections</div>
-    </div>
-    <div class="live-metric">
-      <label>Coordinates</label>
-      <div class="value" id="live-location">Using dashboard defaults</div>
-    </div>
-  </div>
-
-  <p class="live-hint" id="live-hint">
-    Phone camera in the browser needs HTTPS or localhost. If your phone cannot grant camera access, use a phone IP camera app and pass its stream URL to the edge client with <code>--source</code>.
-  </p>
-
-  <canvas id="live-capture" hidden></canvas>
-</section>
-
-<!-- ═══ Map ═══ -->
-<div id="map"></div>
-
-<!-- ═══ Filter bar ═══ -->
-<nav class="filter-bar">
-  <button class="filter-btn active" data-filter="all">All</button>
-  <button class="filter-btn" data-filter="critical">Critical</button>
-  <button class="filter-btn" data-filter="high">High</button>
-  <button class="filter-btn" data-filter="medium">Medium</button>
-  <button class="filter-btn" data-filter="low">Low</button>
-  <button class="filter-btn" data-filter="repaired">Repaired</button>
-</nav>
-
-<!-- ═══ Detail panel ═══ -->
+<!-- ═══ Detail panel (shared) ═══ -->
 <aside class="detail-panel" id="detail-panel">
   <button class="close-btn" id="close-detail">&times;</button>
   <h2 id="detail-title">Pothole #—</h2>
@@ -145,27 +195,21 @@
     <label>Description</label>
     <div class="value" id="detail-description"></div>
   </div>
-
   <div class="grievance-list" id="detail-grievances"></div>
-
   <div style="margin-top: 20px; display: flex; gap: 8px;">
-    <button class="btn btn-primary" id="btn-verify">&#128269; Verify</button>
+    <button class="btn btn-primary" id="btn-verify">🔍 Verify</button>
   </div>
 </aside>
 
 <!-- ═══ Manual report modal ═══ -->
 <div class="modal-overlay" id="report-modal">
   <div class="modal">
-    <h2>&#128679; Report a Pothole</h2>
-
+    <h2>🚧 Report a Pothole</h2>
     <div class="form-group">
       <label>Photo</label>
-      <div class="drop-zone" id="drop-zone">
-        Click or drag a photo here
-      </div>
+      <div class="drop-zone" id="drop-zone">Click or drag a photo here</div>
       <input type="file" id="photo-input" accept="image/*" style="display:none" />
     </div>
-
     <div class="form-group">
       <label>Latitude</label>
       <input type="number" step="any" id="report-lat" placeholder="19.0760" />
@@ -187,11 +231,9 @@
       <label>Description</label>
       <textarea id="report-desc" placeholder="Additional details…"></textarea>
     </div>
-
     <p style="font-size:12px; color:var(--text-secondary); margin-bottom:8px;">
-      💡 Tip: click on the map to auto‑fill coordinates
+      💡 Tip: click on the map to auto-fill coordinates
     </p>
-
     <div class="btn-row">
       <button class="btn btn-ghost" id="cancel-report">Cancel</button>
       <button class="btn btn-primary" id="submit-report">Submit Report</button>
@@ -202,17 +244,13 @@
 <!-- ═══ Verify modal ═══ -->
 <div class="modal-overlay" id="verify-modal">
   <div class="modal">
-    <h2>&#128269; Verify Pothole Repair</h2>
+    <h2>🔍 Verify Pothole Repair</h2>
     <p id="verify-pothole-label" style="margin-bottom:16px; color:var(--text-secondary);"></p>
-
     <div class="form-group">
       <label>New Photo</label>
-      <div class="drop-zone" id="verify-drop-zone">
-        Click or drag a new photo here
-      </div>
+      <div class="drop-zone" id="verify-drop-zone">Click or drag a new photo here</div>
       <input type="file" id="verify-photo-input" accept="image/*" style="display:none" />
     </div>
-
     <div class="btn-row">
       <button class="btn btn-ghost" id="cancel-verify">Cancel</button>
       <button class="btn btn-primary" id="submit-verify">Verify</button>
@@ -223,8 +261,9 @@
 <!-- ═══ Toast container ═══ -->
 <div class="toast-container" id="toast-container"></div>
 
-<!-- ═══ Scripts ═══ -->
+<!-- Scripts -->
 <script src="app.js"></script>
+<script src="camera.js"></script>
 
 </body>
 </html>
