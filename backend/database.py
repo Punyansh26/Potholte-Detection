@@ -93,6 +93,47 @@ class GrievanceLifecycle(Base):
     pothole = relationship("DefectRegistry", back_populates="grievances")
 
 
+class SensorEvent(Base):
+    """Raw phone sensor packet with optional classification result."""
+    __tablename__ = "sensor_event"
+
+    id = Column(Integer, primary_key=True, index=True)
+    device_id = Column(String(64), default="")
+    captured_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+    lat = Column(Float, nullable=True)
+    lon = Column(Float, nullable=True)
+    speed_kph = Column(Float, nullable=True)
+    accel_x = Column(Float, nullable=True)
+    accel_y = Column(Float, nullable=True)
+    accel_z = Column(Float, nullable=True)
+    gyro_pitch = Column(Float, nullable=True)
+    gyro_roll = Column(Float, nullable=True)
+    gyro_yaw = Column(Float, nullable=True)
+    vision_detected = Column(Boolean, default=False)
+    vision_confidence = Column(Float, nullable=True)
+    image_url = Column(String(500), nullable=True)
+    raw_payload = Column(JSON, default=dict)
+    model_score = Column(Float, nullable=True)
+    classified_pothole = Column(Boolean, default=False)
+    linked_pothole_id = Column(Integer, nullable=True)
+
+
+class ComplaintRegistry(Base):
+    """Tracks cluster-based complaint cycles with expiry."""
+    __tablename__ = "complaint_registry"
+
+    id = Column(Integer, primary_key=True, index=True)
+    cluster_key = Column(String(128), index=True)
+    center_lat = Column(Float, nullable=False)
+    center_lon = Column(Float, nullable=False)
+    pothole_count = Column(Integer, default=0)
+    max_severity = Column(String(20), default="low")
+    status = Column(String(20), default="Active")  # Active | Expired
+    authority = Column(String(120), default="")
+    last_filed_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+    expires_at = Column(DateTime(timezone=True), nullable=True)
+
+
 # ── Create all tables ───────────────────────────────────────────────────
 
 def init_db():

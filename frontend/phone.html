@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PotholeGuard — Phone Sensor Node</title>
+  <link rel="stylesheet" href="index.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="topbar-left">
+      <div class="logo">PotholeGuard <span>Phone Node</span></div>
+    </div>
+  </header>
+
+  <section class="stat-bar" style="grid-template-columns:repeat(2,minmax(0,1fr));">
+    <div class="stat-card">
+      <span class="stat-num" id="phone-status">Idle</span>
+      <span class="stat-label">Status</span>
+    </div>
+    <div class="stat-card">
+      <span class="stat-num" id="phone-last">—</span>
+      <span class="stat-label">Last Sent</span>
+    </div>
+  </section>
+
+  <div class="tab-content active" style="padding:20px;">
+    <div class="live-info-card" style="max-width:520px; margin:0 auto;">
+      <label>Device ID</label>
+      <input id="device-id" class="form-control" type="text" value="phone-001" style="width:100%; margin-bottom:12px;" />
+
+      <label>IP Webcam Snapshot URL (optional)</label>
+      <input id="snapshot-url" class="form-control" type="text" placeholder="http://<phone-ip>:8080/shot.jpg" style="width:100%; margin-bottom:12px;" />
+
+      <label>Backend URL</label>
+      <input id="backend-url" class="form-control" type="text" value="" placeholder="Leave empty for same origin" style="width:100%; margin-bottom:12px;" />
+
+      <div style="display:flex; gap:8px;">
+        <button class="btn btn-primary" id="btn-start">▶ Start Sensors</button>
+        <button class="btn btn-ghost" id="btn-stop" style="display:none;">■ Stop</button>
+      </div>
+
+      <div style="margin-top:12px; font-size:12px; color:var(--text-secondary);">
+        Keep this page open while driving. The phone will stream accelerometer, gyro, GPS, speed, and timestamp.
+      </div>
+    </div>
+  </div>
+
+  <script src="phone.js"></script>
+</body>
+</html>

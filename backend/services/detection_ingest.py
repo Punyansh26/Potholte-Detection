@@ -9,7 +9,7 @@ from datetime import datetime, timezone
 
 from sqlalchemy.orm import Session
 
-from backend.database import DefectRegistry
+from backend.database import DefectRegistry, SensorEvent
 from backend.models import DetectionRequest, DetectionResponse
 from backend.services.dedup import find_nearby_pothole
 from backend.services.grievance import build_cpgrams_payload, file_grievance
@@ -39,6 +39,23 @@ async def ingest_detection(req: DetectionRequest, db: Session) -> DetectionRespo
         sensor_fusion_score=req.sensor_fusion_score,
     )
     snap_url = save_snapshot(req.snapshot_base64)
+
+    vision_event = SensorEvent(
+        device_id=req.camera_id,
+        captured_at=datetime.now(timezone.utc),
+        lat=req.lat,
+        lon=req.lon,
+        speed_kph=req.speed_kph,
+        gyro_pitch=req.pitch_deg,
+        gyro_roll=req.roll_deg,
+        gyro_yaw=req.yaw_deg,
+        vision_detected=True,
+        vision_confidence=req.confidence,
+        image_url=snap_url,
+        raw_payload={"source": "vision", "severity_est": req.severity_est},
+        classified_pothole=True,
+    )
+    db.add(vision_event)
 
     existing = find_nearby_pothole(db, req.lat, req.lon, settings.dedup_radius_meters)
 

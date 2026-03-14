@@ -31,6 +31,13 @@ class Settings(BaseSettings):
     # Deduplication
     dedup_radius_meters: float = 2.5
 
+    # Clustering / complaints
+    cluster_radius_m: float = 50.0
+    cluster_min_detections: int = 5
+    cluster_min_severity: str = "high"
+    complaint_expiry_days: int = 14
+    complaint_interval_hours: int = 24
+
     model_config = ConfigDict(env_file=".env", env_file_encoding="utf-8")
 
 

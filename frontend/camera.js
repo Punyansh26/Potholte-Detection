@@ -46,7 +46,6 @@
   const sensorFusionEl     = document.getElementById('sensor-fusion');
   const sensorSeverityEl   = document.getElementById('sensor-severity');
   const sensorSpeedEl      = document.getElementById('sensor-speed');
-  const sensorAltitudeEl   = document.getElementById('sensor-altitude');
   const sensorAttitudeEl   = document.getElementById('sensor-attitude');
   const sensorYawEl        = document.getElementById('sensor-yaw');
   const sensorAdvisoryEl   = document.getElementById('sensor-advisory');
@@ -78,7 +77,7 @@
   }
 
   function buildTelemetryUrl() {
-    return `${API}/stream/telemetry`;
+    return `${API}/telemetry/latest`;
   }
 
   function connect() {

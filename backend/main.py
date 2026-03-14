@@ -5,6 +5,8 @@ from __future__ import annotations
 import os
 import sys
 import logging
+import threading
+import time
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
@@ -14,8 +16,9 @@ from fastapi.staticfiles import StaticFiles
 # Ensure project root is importable
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
-from backend.database import init_db
-from backend.routers import detections, manual_report, verification, mock_cpgrams, stream
+from backend.database import init_db, SessionLocal
+from backend.routers import detections, manual_report, verification, mock_cpgrams, stream, telemetry, complaints
+from backend.services.complaint_scheduler import run_complaint_cycle
 from config import settings
 
 logging.basicConfig(level=logging.INFO)
@@ -29,7 +32,26 @@ async def lifespan(app: FastAPI):
     logger.info("Initializing database…")
     init_db()
     logger.info("Database ready. Storage: %s", settings.storage_path)
+
+    stop_event = threading.Event()
+
+    def _complaint_loop():
+        while not stop_event.is_set():
+            try:
+                db = SessionLocal()
+                try:
+                    import asyncio
+                    asyncio.run(run_complaint_cycle(db))
+                finally:
+                    db.close()
+            except Exception as exc:
+                logger.error("Complaint scheduler error: %s", exc)
+            stop_event.wait(settings.complaint_interval_hours * 3600)
+
+    thread = threading.Thread(target=_complaint_loop, daemon=True)
+    thread.start()
     yield
+    stop_event.set()
 
 
 # ── App ─────────────────────────────────────────────────────────────────
@@ -65,6 +87,8 @@ app.include_router(manual_report.router)
 app.include_router(verification.router)
 app.include_router(mock_cpgrams.router)
 app.include_router(stream.router)
+app.include_router(telemetry.router)
+app.include_router(complaints.router)
 
 # ── Static files ────────────────────────────────────────────────────────
 

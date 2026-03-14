@@ -35,6 +35,8 @@ from fastapi.responses import StreamingResponse
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", ".."))
 from backend.models import LiveSensorTelemetry, LiveTelemetryResponse
+from backend.services.phone_telemetry import get_latest
+from backend.services.sensor_classifier import build_telemetry_view
 from config import settings
 from detector.demo_ultrasonic import synthesize_ultrasonic_profile
 
@@ -140,6 +142,12 @@ def _store_latest_telemetry(telemetry: dict[str, float | int | str | None]) -> N
 
 
 def _current_telemetry() -> LiveSensorTelemetry:
+    latest_phone = get_latest()
+    if latest_phone:
+        model_score = latest_phone.get("model_score") if isinstance(latest_phone, dict) else None
+        view = build_telemetry_view(latest_phone, model_score)
+        return LiveSensorTelemetry(**view)
+
     with _telemetry_lock:
         telemetry = _latest_telemetry.copy() if _latest_telemetry else None
 

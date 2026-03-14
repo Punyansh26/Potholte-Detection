@@ -101,6 +101,75 @@ class LiveTelemetryResponse(BaseModel):
     telemetry: LiveSensorTelemetry
 
 
+# ── Phone telemetry ───────────────────────────────────────────────────
+
+class TelemetryIngestRequest(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
+
+    timestamp: str = ""  # ISO-8601
+    device_id: str = "phone-001"
+    lat: Optional[float] = None
+    lon: Optional[float] = None
+    speed_kph: Optional[float] = Field(default=None, alias="speed")
+    accel_x: Optional[float] = None
+    accel_y: Optional[float] = None
+    accel_z: Optional[float] = None
+    gyro_pitch: Optional[float] = None
+    gyro_roll: Optional[float] = None
+    gyro_yaw: Optional[float] = None
+    image_url: Optional[str] = None
+    vision_detected: Optional[bool] = Field(default=None, alias="pothole_detected")
+    vision_confidence: Optional[float] = Field(default=None, alias="confidence")
+    raw: dict = Field(default_factory=dict)
+
+
+class TelemetryIngestResponse(BaseModel):
+    event_id: int
+    classified_pothole: bool
+    model_score: float
+    linked_pothole_id: Optional[int] = None
+
+
+class SensorEventOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    device_id: str
+    captured_at: Any = None
+    lat: Optional[float] = None
+    lon: Optional[float] = None
+    speed_kph: Optional[float] = None
+    accel_x: Optional[float] = None
+    accel_y: Optional[float] = None
+    accel_z: Optional[float] = None
+    gyro_pitch: Optional[float] = None
+    gyro_roll: Optional[float] = None
+    gyro_yaw: Optional[float] = None
+    vision_detected: bool = False
+    vision_confidence: Optional[float] = None
+    image_url: Optional[str] = None
+    model_score: Optional[float] = None
+    classified_pothole: bool = False
+    linked_pothole_id: Optional[int] = None
+
+
+# ── Complaints ───────────────────────────────────────────────────────
+
+class ComplaintOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    cluster_key: str
+    center_lat: float
+    center_lon: float
+    pothole_count: int
+    max_severity: str
+    status: str
+    authority: str
+    last_filed_at: Any = None
+    expires_at: Any = None
+
+
 # ── Pothole list / detail ─────────────────────────────────────────────
 
 class PotholeOut(BaseModel):
