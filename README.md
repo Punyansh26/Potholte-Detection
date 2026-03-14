@@ -61,6 +61,19 @@ python detector/edge_client.py --source ./test_images/
 - Mobile browsers usually require **HTTPS** (or `localhost`) for camera access. If your phone cannot grant camera permissions over LAN HTTP, expose the app with HTTPS or use the phone as an IP camera source.
 - For IP camera mode, run an app such as **IP Webcam**, **DroidCam**, or **Camo**, then pass the stream URL to `detector/edge_client.py --source <url>`.
 
+#### IP Webcam setup
+
+1. Install **IP Webcam** on Android and tap **Start server**.
+2. On the laptop, open `http://PHONE_IP:8080` in a browser first. If that page does not load, the issue is network or the server is not running yet.
+3. Try the stream URL first:
+
+```bash
+python detector/edge_client.py --source http://PHONE_IP:8080/video
+```
+
+4. If OpenCV cannot keep the MJPEG stream open, the client now falls back automatically to snapshot polling through `http://PHONE_IP:8080/shot.jpg`.
+5. Keep phone and laptop on the same Wi-Fi, and disable mobile-data switching/VPN on the phone if the IP changes or stops responding.
+
 ## Docker (PostGIS)
 ```bash
 docker-compose up -d

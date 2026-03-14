@@ -25,8 +25,10 @@ import os
 import sys
 import time
 import glob
+from urllib.parse import urlparse
 import httpx
 import cv2
+import numpy as np
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 from detector.inference import PotholeDetector
@@ -55,6 +57,101 @@ def post_detection(det: dict, api_url: str) -> dict | None:
     except Exception as e:
         print(f"  ✗ POST failed: {e}")
         return None
+
+
+def _is_http_source(source: str) -> bool:
+    return isinstance(source, str) and source.startswith(("http://", "https://"))
+
+
+def _build_ip_webcam_candidates(source: str) -> list[tuple[str, str]]:
+    """Return candidate stream/snapshot endpoints for common phone camera apps."""
+    if not _is_http_source(source):
+        return []
+
+    parsed = urlparse(source)
+    base = f"{parsed.scheme}://{parsed.netloc}"
+    path = parsed.path.rstrip("/")
+    candidates: list[tuple[str, str]] = []
+
+    def add(kind: str, url: str):
+        item = (kind, url)
+        if item not in candidates:
+            candidates.append(item)
+
+    if not path:
+        add("stream", f"{base}/video")
+        add("stream", f"{base}/videofeed")
+        add("snapshot", f"{base}/shot.jpg")
+        return candidates
+
+    add("stream", source)
+    if path.endswith("/video") or path.endswith("/videofeed"):
+        add("snapshot", f"{base}/shot.jpg")
+    elif path.endswith("/shot.jpg"):
+        add("stream", f"{base}/video")
+        add("stream", f"{base}/videofeed")
+    return candidates
+
+
+def _read_snapshot_frame(snapshot_url: str) -> np.ndarray | None:
+    """Fetch one JPEG frame from a snapshot endpoint."""
+    try:
+        resp = httpx.get(snapshot_url, timeout=10)
+        resp.raise_for_status()
+        arr = np.frombuffer(resp.content, dtype=np.uint8)
+        frame = cv2.imdecode(arr, cv2.IMREAD_COLOR)
+        return frame
+    except Exception as exc:
+        print(f"Snapshot fetch failed from {snapshot_url}: {exc}")
+        return None
+
+
+def _open_stream_capture(source) -> tuple[cv2.VideoCapture | None, str | None]:
+    """Open a webcam/video/URL source, trying common phone stream endpoints."""
+    if not isinstance(source, str) or not _is_http_source(source):
+        cap = cv2.VideoCapture(source)
+        return (cap if cap.isOpened() else None, None)
+
+    for kind, candidate in _build_ip_webcam_candidates(source):
+        if kind != "stream":
+            continue
+        cap = cv2.VideoCapture(candidate)
+        if cap.isOpened():
+            return cap, candidate
+        cap.release()
+    return None, None
+
+
+def _iter_source_frames(source, snapshot_interval: float = 0.25):
+    """Yield frames from webcam/video or snapshot endpoints."""
+    cap, opened_source = _open_stream_capture(source)
+    if cap is not None:
+        try:
+            while cap.isOpened():
+                ret, frame = cap.read()
+                if not ret:
+                    break
+                yield frame, opened_source or str(source)
+        finally:
+            cap.release()
+        return
+
+    if isinstance(source, str) and _is_http_source(source):
+        for kind, candidate in _build_ip_webcam_candidates(source):
+            if kind != "snapshot":
+                continue
+            print(f"Falling back to snapshot polling: {candidate}")
+            while True:
+                frame = _read_snapshot_frame(candidate)
+                if frame is None:
+                    break
+                yield frame, candidate
+                time.sleep(snapshot_interval)
+            return
+
+    raise RuntimeError(
+        f"Cannot open source: {source}. For IP Webcam, confirm the phone and laptop are on the same Wi-Fi and try http://PHONE_IP:8080/video or http://PHONE_IP:8080/shot.jpg"
+    )
 
 
 def run_edge_client(args):
@@ -87,21 +184,12 @@ def run_edge_client(args):
             time.sleep(0.2)
         return
 
-    # ── Video / webcam mode ──
-    cap = cv2.VideoCapture(source)
-    if not cap.isOpened():
-        print(f"Cannot open source: {source}")
-        return
-
     frame_idx = 0
     gps_idx = 0
     print(f"Streaming from {source} — press Ctrl+C to stop")
 
     try:
-        while cap.isOpened():
-            ret, frame = cap.read()
-            if not ret:
-                break
+        for frame, active_source in _iter_source_frames(source, args.snapshot_interval):
             frame_idx += 1
             if frame_idx % args.skip != 0:
                 continue
@@ -116,14 +204,16 @@ def run_edge_client(args):
 
             dets = detector.detect_image(frame, args.camera_id, lat, lon)
             if dets:
-                print(f"\n[Frame {frame_idx}] {len(dets)} detection(s) @ ({lat:.4f}, {lon:.4f})")
+                print(f"\n[Frame {frame_idx}] {len(dets)} detection(s) @ ({lat:.4f}, {lon:.4f}) from {active_source}")
                 for d in dets:
                     post_detection(d, api_url)
             time.sleep(0.1)
     except KeyboardInterrupt:
         print("\nStopped by user")
+    except RuntimeError as exc:
+        print(str(exc))
     finally:
-        cap.release()
+        pass
 
 
 if __name__ == "__main__":
@@ -137,6 +227,7 @@ if __name__ == "__main__":
     parser.add_argument("--lon", type=float, default=settings.default_lon)
     parser.add_argument("--skip", type=int, default=5, help="Process every Nth frame")
     parser.add_argument("--gps-track", default=None, help="JSON file with GPS coordinates")
+    parser.add_argument("--snapshot-interval", type=float, default=0.35, help="Seconds between IP camera snapshot polls")
     args = parser.parse_args()
 
     run_edge_client(args)
