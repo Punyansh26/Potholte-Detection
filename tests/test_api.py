@@ -4,6 +4,8 @@ import sys
 import os
 import base64
 import pytest
+import cv2
+import numpy as np
 
 # Ensure project root is importable
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
@@ -62,6 +64,48 @@ def test_post_detection_with_snapshot():
     }
     resp = client.post("/detections", json=payload)
     assert resp.status_code == 200
+
+
+def test_live_detect_persists_detection(monkeypatch):
+    img = np.full((24, 24, 3), 180, dtype=np.uint8)
+    ok, buf = cv2.imencode(".jpg", img)
+    assert ok is True
+
+    class StubDetector:
+        def detect_image(self, frame, camera_id, lat, lon):
+            assert frame.shape[0] > 0
+            assert camera_id == "browser-camera"
+            return [{
+                "camera_id": camera_id,
+                "timestamp": "2026-03-14T12:00:00+0000",
+                "lat": lat,
+                "lon": lon,
+                "bbox": [1, 2, 12, 16],
+                "confidence": 0.93,
+                "severity_est": "medium",
+                "class_name": "pothole",
+                "snapshot_base64": base64.b64encode(buf).decode(),
+            }]
+
+    import backend.routers.detections as detections_router
+
+    monkeypatch.setattr(detections_router, "get_detector", lambda: StubDetector())
+
+    resp = client.post("/live/detect", json={
+        "image_base64": base64.b64encode(buf).decode(),
+        "camera_id": "browser-camera",
+        "lat": 19.076,
+        "lon": 72.8777,
+        "persist": True,
+    })
+
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["frame_width"] == 24
+    assert data["frame_height"] == 24
+    assert len(data["detections"]) == 1
+    assert data["detections"][0]["pothole_id"] == 1
+    assert data["detections"][0]["is_new"] is True
 
 
 # ── GET /potholes ────────────────────────────────────────────────

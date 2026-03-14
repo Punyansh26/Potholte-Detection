@@ -52,6 +52,46 @@
   </div>
 </section>
 
+<section class="live-panel" id="live-panel">
+  <div class="live-panel-header">
+    <div>
+      <p class="live-kicker">Live Detection</p>
+      <h2>Camera Stream</h2>
+    </div>
+    <span class="live-status idle" id="live-status">Idle</span>
+  </div>
+
+  <div class="live-stage" id="live-stage">
+    <video id="live-video" autoplay muted playsinline></video>
+    <canvas id="live-overlay"></canvas>
+    <div class="live-empty" id="live-empty">
+      Start the camera to stream pothole detection. On phones, the dashboard will prefer the rear camera.
+    </div>
+  </div>
+
+  <div class="live-actions">
+    <button class="btn btn-primary" id="btn-live-toggle">Start Camera</button>
+    <button class="btn btn-ghost" id="btn-live-switch">Flip Camera</button>
+  </div>
+
+  <div class="live-metrics">
+    <div class="live-metric">
+      <label>Last Frame</label>
+      <div class="value" id="live-detection-count">0 detections</div>
+    </div>
+    <div class="live-metric">
+      <label>Coordinates</label>
+      <div class="value" id="live-location">Using dashboard defaults</div>
+    </div>
+  </div>
+
+  <p class="live-hint" id="live-hint">
+    Phone camera in the browser needs HTTPS or localhost. If your phone cannot grant camera access, use a phone IP camera app and pass its stream URL to the edge client with <code>--source</code>.
+  </p>
+
+  <canvas id="live-capture" hidden></canvas>
+</section>
+
 <!-- ═══ Map ═══ -->
 <div id="map"></div>
 

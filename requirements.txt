@@ -18,10 +18,10 @@ opencv-python-headless==4.10.0.84
 Pillow==10.4.0
 numpy==1.26.4
 scikit-image==0.24.0
-onnxruntime==1.19.2
+onnxruntime==1.24.3
 
 # Privacy pipeline
-mediapipe==0.10.18
+mediapipe==0.10.32
 
 # Testing
 pytest==8.3.3

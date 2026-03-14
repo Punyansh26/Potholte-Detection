@@ -34,11 +34,11 @@ cp .env.example .env
 
 ### 3. Start the backend
 ```bash
-python -m uvicorn backend.main:app --reload --port 8000
+python -m uvicorn backend.main:app --reload --port 8003
 ```
 
 ### 4. Open the dashboard
-Visit **http://localhost:8000** in your browser.
+Visit **http://localhost:8003** in your browser.
 
 ### 5. Run the edge detector
 ```bash
@@ -48,9 +48,18 @@ python detector/edge_client.py --source 0
 # Video file
 python detector/edge_client.py --source dashcam.mp4
 
+# Phone IP camera stream
+python detector/edge_client.py --source http://192.168.1.25:8080/video
+
 # Image directory
 python detector/edge_client.py --source ./test_images/
 ```
+
+### 6. Use a phone camera
+
+- Open the dashboard on the phone itself and tap **Start Camera**. The live panel streams the camera preview in-browser and sends sampled frames to the backend for pothole detection.
+- Mobile browsers usually require **HTTPS** (or `localhost`) for camera access. If your phone cannot grant camera permissions over LAN HTTP, expose the app with HTTPS or use the phone as an IP camera source.
+- For IP camera mode, run an app such as **IP Webcam**, **DroidCam**, or **Camo**, then pass the stream URL to `detector/edge_client.py --source <url>`.
 
 ## Docker (PostGIS)
 ```bash
@@ -103,6 +112,7 @@ docker-compose up -d
 | Repair verification (ORB/SSIM comparison) | ✅ |
 | Auto-escalation when closed but still damaged | ✅ |
 | Real-time Leaflet dashboard (dark theme) | ✅ |
+| Live browser camera streaming + overlay detection | ✅ |
 | Manual report with photo upload | ✅ |
 | Privacy blur (faces & license plates) | ✅ |
 | Docker + PostGIS support | ✅ |

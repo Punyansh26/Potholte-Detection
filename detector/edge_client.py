@@ -7,6 +7,9 @@ Usage examples:
   # Video file
   python detector/edge_client.py --source dashcam.mp4
 
+    # Phone IP camera stream (e.g. IP Webcam / DroidCam HTTP or RTSP URL)
+    python detector/edge_client.py --source http://192.168.1.25:8080/video
+
   # Image directory
   python detector/edge_client.py --source ./test_images/
 
@@ -125,7 +128,7 @@ def run_edge_client(args):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Edge pothole detection client")
-    parser.add_argument("--source", default="0", help="Webcam id, video path, or image dir")
+    parser.add_argument("--source", default="0", help="Webcam id, stream URL, video path, or image dir")
     parser.add_argument("--model", default="yolov8n.pt", help="YOLO model path")
     parser.add_argument("--conf", type=float, default=0.25, help="Confidence threshold")
     parser.add_argument("--api", default="http://localhost:8000", help="Backend API URL")

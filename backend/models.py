@@ -27,6 +27,31 @@ class DetectionResponse(BaseModel):
     grievance_id: Optional[str] = None
 
 
+class LiveFrameRequest(BaseModel):
+    image_base64: str
+    camera_id: str = "browser-camera"
+    lat: float = 0.0
+    lon: float = 0.0
+    persist: bool = True
+
+
+class LiveFrameDetection(BaseModel):
+    bbox: List[float] = Field(default_factory=list)
+    confidence: float = 0.0
+    severity_est: Optional[str] = None
+    class_name: str = "pothole"
+    pothole_id: Optional[int] = None
+    risk_score: Optional[float] = None
+    is_new: Optional[bool] = None
+
+
+class LiveFrameResponse(BaseModel):
+    detections: List[LiveFrameDetection] = Field(default_factory=list)
+    processed_at: str = ""
+    frame_width: int = 0
+    frame_height: int = 0
+
+
 # ── Pothole list / detail ─────────────────────────────────────────────
 
 class PotholeOut(BaseModel):

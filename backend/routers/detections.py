@@ -1,104 +1,78 @@
-"""Detections router — ingest edge detections, deduplicate, score, auto-file."""
+"""Detections router — ingest edge detections, run live inference, list results."""
 
 from __future__ import annotations
 
-import base64
-import uuid
-import os
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
 from backend.database import DefectRegistry, get_db
-from backend.models import DetectionRequest, DetectionResponse, PotholeOut, PotholeDetail, GrievanceOut
+from backend.models import (
+    DetectionRequest,
+    DetectionResponse,
+    GrievanceOut,
+    LiveFrameDetection,
+    LiveFrameRequest,
+    LiveFrameResponse,
+    PotholeDetail,
+    PotholeOut,
+)
+from backend.services.detection_ingest import ingest_detection
 from backend.services.dedup import find_nearby_pothole
-from backend.services.risk_scoring import estimate_severity, compute_risk_score
-from backend.services.grievance import build_cpgrams_payload, file_grievance
-from config import settings
+from backend.services.live_detection import decode_frame, get_detector
 
 router = APIRouter(tags=["detections"])
-
-
-def _save_snapshot(snapshot_b64: str | None) -> str | None:
-    """Persist a base64 snapshot to disk, return relative URL."""
-    if not snapshot_b64:
-        return None
-    fname = f"{uuid.uuid4().hex}.jpg"
-    fpath = os.path.join(settings.storage_path, fname)
-    with open(fpath, "wb") as f:
-        f.write(base64.b64decode(snapshot_b64))
-    return f"/snapshots/{fname}"
 
 
 @router.post("/detections", response_model=DetectionResponse)
 async def post_detection(req: DetectionRequest, db: Session = Depends(get_db)):
     """Receive a detection from an edge device."""
+    return await ingest_detection(req, db)
 
-    # 1. Severity & risk
-    severity = req.severity_est or estimate_severity(req.bbox)
-    risk = compute_risk_score(severity, req.confidence)
 
-    # 2. Save snapshot
-    snap_url = _save_snapshot(req.snapshot_base64)
+@router.post("/live/detect", response_model=LiveFrameResponse)
+async def detect_live_frame(req: LiveFrameRequest, db: Session = Depends(get_db)):
+    """Run pothole inference on a single browser-captured frame."""
+    try:
+        frame = decode_frame(req.image_base64)
+        detector = get_detector()
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except Exception as exc:
+        raise HTTPException(status_code=503, detail=f"Detector unavailable: {exc}") from exc
 
-    # 3. Spatial dedup
-    existing = find_nearby_pothole(db, req.lat, req.lon, settings.dedup_radius_meters)
+    frame_h, frame_w = frame.shape[:2]
+    detections = detector.detect_image(frame, req.camera_id, req.lat, req.lon)
+    response_items: list[LiveFrameDetection] = []
 
-    if existing:
-        # Update existing record
-        existing.last_seen = datetime.now(timezone.utc)
-        existing.detection_count += 1
-        existing.avg_confidence = (
-            (existing.avg_confidence * (existing.detection_count - 1) + req.confidence)
-            / existing.detection_count
+    for detection in detections:
+        pothole_id = None
+        risk_score = None
+        is_new = None
+        if req.persist:
+            result = await ingest_detection(DetectionRequest(**detection), db)
+            pothole_id = result.pothole_id
+            risk_score = result.risk_score
+            is_new = result.is_new
+
+        response_items.append(
+            LiveFrameDetection(
+                bbox=detection.get("bbox", []),
+                confidence=detection.get("confidence", 0.0),
+                severity_est=detection.get("severity_est"),
+                class_name=detection.get("class_name", "pothole"),
+                pothole_id=pothole_id,
+                risk_score=risk_score,
+                is_new=is_new,
+            )
         )
-        if snap_url:
-            snaps = existing.snapshots or []
-            snaps.append(snap_url)
-            existing.snapshots = snaps
-        # Upgrade severity if new detection is worse
-        sev_order = {"low": 0, "medium": 1, "high": 2, "critical": 3}
-        if sev_order.get(severity, 0) > sev_order.get(existing.severity, 0):
-            existing.severity = severity
-        existing.risk_score = max(existing.risk_score, risk)
-        db.commit()
-        db.refresh(existing)
-        pothole = existing
-        is_new = False
-    else:
-        # Create new record
-        pothole = DefectRegistry(
-            lat=req.lat,
-            lon=req.lon,
-            severity=severity,
-            risk_score=risk,
-            avg_confidence=req.confidence,
-            snapshots=[snap_url] if snap_url else [],
-        )
-        db.add(pothole)
-        db.commit()
-        db.refresh(pothole)
-        is_new = True
 
-    # 4. Auto-file grievance if critical
-    grievance_filed = False
-    grievance_id = None
-    if risk >= settings.risk_threshold:
-        payload = build_cpgrams_payload(
-            pothole.pothole_id, req.lat, req.lon,
-            severity, risk, req.snapshot_base64,
-        )
-        grievance_id = await file_grievance(db, pothole.pothole_id, payload, settings.cpgrams_endpoint)
-        grievance_filed = grievance_id is not None
-
-    return DetectionResponse(
-        pothole_id=pothole.pothole_id,
-        is_new=is_new,
-        severity=pothole.severity,
-        risk_score=pothole.risk_score,
-        grievance_filed=grievance_filed,
-        grievance_id=grievance_id,
+    return LiveFrameResponse(
+        detections=response_items,
+        processed_at=datetime.now(timezone.utc).isoformat(),
+        frame_width=frame_w,
+        frame_height=frame_h,
     )
 
 
@@ -135,7 +109,6 @@ def get_pothole(pothole_id: int, db: Session = Depends(get_db)):
     """Get full detail for a single pothole."""
     p = db.query(DefectRegistry).filter_by(pothole_id=pothole_id).first()
     if not p:
-        from fastapi import HTTPException
         raise HTTPException(404, "Pothole not found")
     grievances = [GrievanceOut.model_validate(g) for g in p.grievances]
     out = PotholeOut.model_validate(p).model_dump()
