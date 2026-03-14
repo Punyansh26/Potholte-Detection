@@ -16,7 +16,7 @@ An end-to-end prototype that **detects potholes** from camera/video, **geotags &
 └──────────────┘                         └─────────┬───────────┘
                                                    │
                               ┌─────────────────────┴──────────┐
-                              │  SQLite/PostGIS  │  Mock CPGRAMS│
+                              │  Neon Postgres   │  Mock CPGRAMS│
                               └──────────────────┴──────────────┘
 ```
 
@@ -32,6 +32,8 @@ pip install -r requirements.txt
 ```bash
 cp .env.example .env
 ```
+
+Set `DATABASE_URL` in `.env` to your Neon Postgres connection string.
 
 ### 3. Start the backend
 ```bash
@@ -99,7 +101,7 @@ python detector/edge_client.py --source http://PHONE_IP:8080/video
 7. Add `--phone-gps` to fetch coordinates from the phone host (`/gps.json`, `/sensors.json`, `/status.json`) when available.
 8. If your environment uses `opencv-python-headless`, popup preview windows are not available. The client will continue detection and storage without crashing. Use the browser dashboard live camera panel for visual overlays.
 
-## Docker (PostGIS)
+## Docker (Optional Local PostGIS Fallback)
 ```bash
 docker-compose up -d
 ```

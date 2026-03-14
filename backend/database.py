@@ -5,7 +5,7 @@ import sys
 from datetime import datetime, timezone
 from sqlalchemy import (
     create_engine, Column, Integer, String, Float, Boolean, Text,
-    DateTime, JSON, ForeignKey, event, Index
+    DateTime, JSON, ForeignKey, event, inspect
 )
 from sqlalchemy.orm import declarative_base, sessionmaker, relationship
 
@@ -35,7 +35,7 @@ if _is_sqlite:
                 pass
         # SpatiaLite not available – spatial queries will use plain lat/lon
 else:
-    engine = create_engine(DATABASE_URL)
+    engine = create_engine(DATABASE_URL, pool_pre_ping=True)
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
@@ -94,7 +94,7 @@ def init_db():
 
 
 def _ensure_hackathon_columns():
-    """Add newer demo columns to existing sqlite deployments without Alembic."""
+    """Add newer demo columns to existing deployments without Alembic."""
     columns = {
         "latest_ultrasonic_distance_cm": "FLOAT",
         "estimated_depth_cm": "FLOAT",
@@ -105,8 +105,8 @@ def _ensure_hackathon_columns():
 
     with engine.begin() as conn:
         existing = {
-            row[1]
-            for row in conn.exec_driver_sql("PRAGMA table_info(defect_registry)").fetchall()
+            column_info["name"]
+            for column_info in inspect(conn).get_columns("defect_registry")
         }
         for name, sql_type in columns.items():
             if name not in existing:

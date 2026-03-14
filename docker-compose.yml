@@ -22,7 +22,7 @@ services:
     ports:
       - "8000:8000"
     environment:
-      DATABASE_URL: postgresql://pothole:${POSTGRES_PASSWORD:-password}@db:5432/pothole_db
+      DATABASE_URL: ${DATABASE_URL:-postgresql://pothole:${POSTGRES_PASSWORD:-password}@db:5432/pothole_db}
       STORAGE_PATH: /app/storage/snapshots
       CPGRAMS_ENDPOINT: http://localhost:8000/mock/cpgrams/grievance
       RISK_THRESHOLD: 80

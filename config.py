@@ -1,6 +1,7 @@
 """Application configuration loaded from environment variables."""
 
 import os
+import sys
 from pathlib import Path
 from pydantic import ConfigDict
 from pydantic_settings import BaseSettings
@@ -34,6 +35,9 @@ class Settings(BaseSettings):
 
 
 settings = Settings()
+
+if "pytest" in sys.modules:
+    settings.database_url = os.environ.get("TEST_DATABASE_URL", "sqlite:///./test_pothole.db")
 
 # Ensure storage directory exists
 Path(settings.storage_path).mkdir(parents=True, exist_ok=True)
