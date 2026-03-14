@@ -78,6 +78,7 @@ python detector/edge_client.py --source http://PHONE_IP:8080/video
 5. Keep phone and laptop on the same Wi-Fi, and disable mobile-data switching/VPN on the phone if the IP changes or stops responding.
 6. Add `--preview` to show live bounding boxes and labels (severity, confidence, pothole id, risk score) on the camera feed.
 7. Add `--phone-gps` to fetch coordinates from the phone host (`/gps.json`, `/sensors.json`, `/status.json`) when available.
+8. If your environment uses `opencv-python-headless`, popup preview windows are not available. The client will continue detection and storage without crashing. Use the browser dashboard live camera panel for visual overlays.
 
 ## Docker (PostGIS)
 ```bash

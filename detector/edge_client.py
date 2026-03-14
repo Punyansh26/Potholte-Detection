@@ -59,6 +59,15 @@ def post_detection(det: dict, api_url: str) -> dict | None:
         return None
 
 
+def check_backend(api_url: str, timeout_s: float = 4.0) -> bool:
+    """Verify backend reachability before streaming detections."""
+    try:
+        resp = httpx.get(f"{api_url}/health", timeout=timeout_s)
+        return resp.status_code == 200
+    except Exception:
+        return False
+
+
 def _phone_base_url(source) -> str | None:
     if not isinstance(source, str) or not _is_http_source(source):
         return None
@@ -254,6 +263,12 @@ def run_edge_client(args):
     api_url = args.api
     gps_track = load_gps_track(args.gps_track)
 
+    if not check_backend(api_url):
+        raise RuntimeError(
+            f"Backend is not reachable at {api_url}. Start FastAPI first (example: python -m uvicorn backend.main:app --reload --port 8003) "
+            "or pass --api with the correct URL."
+        )
+
     source = args.source
     if source.isdigit():
         source = int(source)
@@ -284,11 +299,15 @@ def run_edge_client(args):
 
     frame_idx = 0
     gps_idx = 0
+    preview_enabled = args.preview
     print(f"Streaming from {source} — press Ctrl+C to stop")
 
     try:
         for frame, active_source in _iter_source_frames(source, args.snapshot_interval):
             frame_idx += 1
+            if args.max_frames > 0 and frame_idx > args.max_frames:
+                print(f"Reached max frames ({args.max_frames}). Stopping.")
+                break
             if frame_idx % args.skip != 0:
                 continue
 
@@ -316,23 +335,32 @@ def run_edge_client(args):
             else:
                 posted_results = []
 
-            if args.preview:
+            if preview_enabled:
                 preview = _draw_preview(frame, dets, posted_results, lat, lon)
-                cv2.imshow("PotholeGuard Live Detection", preview)
-                key = cv2.waitKey(1) & 0xFF
-                if key in (ord("q"), 27):
-                    print("Preview stopped by user")
-                    break
+                try:
+                    cv2.imshow("PotholeGuard Live Detection", preview)
+                    key = cv2.waitKey(1) & 0xFF
+                    if key in (ord("q"), 27):
+                        print("Preview stopped by user")
+                        break
+                except cv2.error as exc:
+                    preview_enabled = False
+                    print(
+                        "Preview disabled: GUI display is unavailable in this OpenCV build. "
+                        "Detection + storage continue without a popup window."
+                    )
+                    print(f"OpenCV detail: {exc}")
             time.sleep(0.1)
     except KeyboardInterrupt:
         print("\nStopped by user")
-    except cv2.error as exc:
-        print(f"OpenCV preview error: {exc}. Run without --preview in a headless environment.")
     except RuntimeError as exc:
         print(str(exc))
     finally:
-        if args.preview:
-            cv2.destroyAllWindows()
+        if preview_enabled:
+            try:
+                cv2.destroyAllWindows()
+            except cv2.error:
+                pass
 
 
 if __name__ == "__main__":
@@ -340,7 +368,7 @@ if __name__ == "__main__":
     parser.add_argument("--source", default="0", help="Webcam id, stream URL, video path, or image dir")
     parser.add_argument("--model", default="yolov8n.pt", help="YOLO model path")
     parser.add_argument("--conf", type=float, default=0.25, help="Confidence threshold")
-    parser.add_argument("--api", default="http://localhost:8000", help="Backend API URL")
+    parser.add_argument("--api", default="http://localhost:8003", help="Backend API URL")
     parser.add_argument("--camera-id", default=settings.camera_id)
     parser.add_argument("--lat", type=float, default=settings.default_lat)
     parser.add_argument("--lon", type=float, default=settings.default_lon)
@@ -350,6 +378,7 @@ if __name__ == "__main__":
     parser.add_argument("--phone-gps-interval", type=float, default=3.0, help="Seconds between phone GPS fetch attempts")
     parser.add_argument("--gps-track", default=None, help="JSON file with GPS coordinates")
     parser.add_argument("--snapshot-interval", type=float, default=0.35, help="Seconds between IP camera snapshot polls")
+    parser.add_argument("--max-frames", type=int, default=0, help="Stop after N frames (0 = unlimited)")
     args = parser.parse_args()
 
     run_edge_client(args)
