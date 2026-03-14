@@ -498,6 +498,12 @@ html, body {
   }
   .live-view { flex-direction: column; }
   .live-info-col { width: 100%; }
+  .sensor-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .sensor-panel-header { flex-direction: column; }
+}
+
+@media (max-width: 560px) {
+  .sensor-grid { grid-template-columns: 1fr; }
 }
 
 /* ── Tab navigation ────────────────────────────────────────────── */
@@ -629,6 +635,100 @@ html, body {
 /* Controls row */
 .live-controls {
   display: flex; flex-wrap: wrap; gap: 10px; align-items: center;
+}
+
+.sensor-mode-select {
+  margin-left: 6px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--border-glass);
+  background: rgba(255,255,255,.05);
+  color: var(--text-primary);
+  font-family: inherit;
+}
+
+.sensor-panel {
+  padding: 14px;
+  border-radius: 16px;
+  border: 1px solid rgba(255,255,255,.08);
+  background:
+    radial-gradient(circle at top right, rgba(34,211,238,.12), transparent 36%),
+    linear-gradient(155deg, rgba(10, 18, 38, 0.92), rgba(8, 12, 24, 0.88));
+}
+
+.sensor-panel-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.sensor-panel h3 {
+  font-size: 16px;
+  letter-spacing: -0.3px;
+}
+
+.sensor-source {
+  padding: 6px 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(34,211,238,.18);
+  background: rgba(34,211,238,.08);
+  color: #9be7f2;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: .7px;
+}
+
+.sensor-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.sensor-card {
+  padding: 12px;
+  border-radius: 14px;
+  border: 1px solid rgba(255,255,255,.06);
+  background: rgba(255,255,255,.04);
+}
+
+.sensor-card-accent {
+  background: linear-gradient(145deg, rgba(99,102,241,.18), rgba(34,211,238,.08));
+  border-color: rgba(99,102,241,.25);
+}
+
+.sensor-card label {
+  display: block;
+  margin-bottom: 6px;
+  color: var(--text-secondary);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: .8px;
+}
+
+.sensor-card .value {
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: -0.3px;
+}
+
+.sensor-card .meta {
+  margin-top: 6px;
+  color: var(--text-secondary);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.sensor-advisory {
+  margin-top: 12px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: rgba(249,115,22,.08);
+  border: 1px solid rgba(249,115,22,.14);
+  color: #fdba74;
+  font-size: 12px;
+  line-height: 1.45;
 }
 
 /* Info cards */

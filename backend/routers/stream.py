@@ -23,6 +23,7 @@ import base64
 import asyncio
 import logging
 import threading
+import random
 from typing import Generator
 
 import cv2
@@ -33,7 +34,9 @@ from fastapi import APIRouter, Query
 from fastapi.responses import StreamingResponse
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", ".."))
+from backend.models import LiveSensorTelemetry, LiveTelemetryResponse
 from config import settings
+from detector.demo_ultrasonic import synthesize_ultrasonic_profile
 
 logger = logging.getLogger(__name__)
 
@@ -62,6 +65,112 @@ def _estimate_severity(bbox, w, h):
 
 _model = None
 _model_lock = threading.Lock()
+_telemetry_lock = threading.Lock()
+_latest_telemetry = None
+
+
+def _severity_weight(severity: str) -> int:
+    return {
+        "none": 0,
+        "low": 1,
+        "medium": 2,
+        "high": 3,
+        "critical": 4,
+    }.get(severity, 0)
+
+
+def _advisory_for(mode: str, severity: str, detection_count: int) -> str:
+    if severity == "critical":
+        return "Dispatch repair crew and slow platform immediately"
+    if severity == "high":
+        return "Flag lane for inspection and reduce approach speed"
+    if detection_count > 0 and mode == "drone":
+        return "Hold hover for verification pass"
+    if detection_count > 0:
+        return "Maintain scan and log rough segment"
+    return "Monitoring road surface"
+
+
+def _build_mock_telemetry(
+    mode: str,
+    detection_count: int = 0,
+    max_severity: str = "none",
+    confidence: float = 0.0,
+    ultrasonic_distance_cm: float | None = None,
+    estimated_depth_cm: float | None = None,
+    sensor_fusion_score: float | None = None,
+) -> dict[str, float | int | str | None]:
+    severity_boost = _severity_weight(max_severity)
+    tick = int(time.time() * 2)
+    rng = random.Random(f"{mode}:{tick}:{detection_count}:{max_severity}:{confidence:.2f}")
+
+    if mode == "drone":
+        vibration_rms_g = round(0.14 + severity_boost * 0.07 + detection_count * 0.03 + rng.uniform(0.0, 0.08), 2)
+        peak_accel_g = round(vibration_rms_g + 0.18 + rng.uniform(0.03, 0.18), 2)
+        speed_kph = round(24 + rng.uniform(-3.5, 6.5) - severity_boost * 1.2, 1)
+        altitude_m = round(10.5 + rng.uniform(-1.8, 4.2) - severity_boost * 0.45, 1)
+        pitch_deg = round(rng.uniform(-3.2, 3.2) + severity_boost * 0.4, 1)
+        roll_deg = round(rng.uniform(-4.4, 4.4) + severity_boost * 0.45, 1)
+        yaw_deg = round((tick * 11 + rng.uniform(-6.0, 6.0)) % 360, 1)
+        sensor_source = "demo-drone-imu"
+    else:
+        vibration_rms_g = round(0.22 + severity_boost * 0.13 + detection_count * 0.04 + rng.uniform(0.01, 0.11), 2)
+        peak_accel_g = round(vibration_rms_g + 0.28 + rng.uniform(0.06, 0.34), 2)
+        speed_kph = round(max(8.0, 31 + rng.uniform(-4.5, 5.5) - severity_boost * 2.7), 1)
+        altitude_m = None
+        pitch_deg = round(rng.uniform(-1.4, 1.4), 1)
+        roll_deg = round(rng.uniform(-2.2, 2.2), 1)
+        yaw_deg = round((tick * 7 + rng.uniform(-4.0, 4.0)) % 360, 1)
+        sensor_source = "demo-vehicle-imu"
+
+    roughness_index = round(min(100.0, 16 + vibration_rms_g * 42 + severity_boost * 9 + detection_count * 2.5), 1)
+    shock_index = int(min(100, round(peak_accel_g * 18 + severity_boost * 9 + detection_count * 3)))
+
+    return {
+        "mode": mode,
+        "sensor_source": sensor_source,
+        "captured_at": time.strftime("%Y-%m-%dT%H:%M:%S%z"),
+        "detection_count": detection_count,
+        "max_severity": max_severity,
+        "vibration_rms_g": vibration_rms_g,
+        "peak_accel_g": peak_accel_g,
+        "shock_index": shock_index,
+        "roughness_index": roughness_index,
+        "speed_kph": speed_kph,
+        "altitude_m": altitude_m,
+        "pitch_deg": pitch_deg,
+        "roll_deg": roll_deg,
+        "yaw_deg": yaw_deg,
+        "ultrasonic_distance_cm": ultrasonic_distance_cm,
+        "estimated_depth_cm": estimated_depth_cm,
+        "sensor_fusion_score": sensor_fusion_score,
+        "advisory": _advisory_for(mode, max_severity, detection_count),
+    }
+
+
+def _store_latest_telemetry(telemetry: dict[str, float | int | str | None]) -> None:
+    global _latest_telemetry
+    with _telemetry_lock:
+        _latest_telemetry = telemetry.copy()
+
+
+def _current_telemetry(mode: str) -> LiveSensorTelemetry:
+    with _telemetry_lock:
+        telemetry = _latest_telemetry.copy() if _latest_telemetry else None
+
+    if not telemetry:
+        telemetry = _build_mock_telemetry(mode=mode)
+    elif telemetry.get("mode") != mode:
+        telemetry = _build_mock_telemetry(
+            mode=mode,
+            detection_count=int(telemetry.get("detection_count") or 0),
+            max_severity=str(telemetry.get("max_severity") or "none"),
+            ultrasonic_distance_cm=telemetry.get("ultrasonic_distance_cm"),
+            estimated_depth_cm=telemetry.get("estimated_depth_cm"),
+            sensor_fusion_score=telemetry.get("sensor_fusion_score"),
+        )
+
+    return LiveSensorTelemetry(**telemetry)
 
 
 def _register_torch_safe_globals() -> None:
@@ -115,11 +224,14 @@ def _get_model():
 
 # ── Frame generator ──────────────────────────────────────────────────────
 
-def _annotate_frame(frame: np.ndarray, conf_threshold: float, post_url: str | None):
+def _annotate_frame(frame: np.ndarray, conf_threshold: float, post_url: str | None, mode: str):
     """Run YOLO on frame, draw boxes, optionally POST detections."""
     model = _get_model()
     h, w = frame.shape[:2]
     detections_to_post = []
+    top_profile = None
+    top_confidence = 0.0
+    top_severity = "none"
 
     if model:
         try:
@@ -130,6 +242,7 @@ def _annotate_frame(frame: np.ndarray, conf_threshold: float, post_url: str | No
                     conf = float(box.conf[0])
                     severity = _estimate_severity([x1, y1, x2, y2], w, h)
                     color_rgb = _SEV_COLORS.get(severity, (128, 128, 128))
+                    ultrasonic_profile = synthesize_ultrasonic_profile([x1, y1, x2, y2], w, h, conf, severity)
                     # OpenCV uses BGR
                     color_bgr = (color_rgb[2], color_rgb[1], color_rgb[0])
 
@@ -158,9 +271,38 @@ def _annotate_frame(frame: np.ndarray, conf_threshold: float, post_url: str | No
                         "bbox": [x1, y1, x2, y2],
                         "confidence": round(conf, 4),
                         "severity_est": severity,
+                        **ultrasonic_profile,
                     })
+
+                    if _severity_weight(severity) >= _severity_weight(top_severity):
+                        top_profile = ultrasonic_profile
+                        top_confidence = conf
+                        top_severity = severity
         except Exception as e:
             logger.error("Inference error: %s", e)
+
+    telemetry = _build_mock_telemetry(
+        mode=mode,
+        detection_count=len(detections_to_post),
+        max_severity=top_severity,
+        confidence=top_confidence,
+        ultrasonic_distance_cm=(top_profile or {}).get("ultrasonic_distance_cm"),
+        estimated_depth_cm=(top_profile or {}).get("estimated_depth_cm"),
+        sensor_fusion_score=(top_profile or {}).get("sensor_fusion_score"),
+    )
+    _store_latest_telemetry(telemetry)
+
+    for detection in detections_to_post:
+        detection["sensor_source"] = str(telemetry.get("sensor_source") or detection.get("sensor_source") or "")
+        detection["vibration_rms_g"] = telemetry.get("vibration_rms_g")
+        detection["peak_accel_g"] = telemetry.get("peak_accel_g")
+        detection["shock_index"] = telemetry.get("shock_index")
+        detection["roughness_index"] = telemetry.get("roughness_index")
+        detection["speed_kph"] = telemetry.get("speed_kph")
+        detection["altitude_m"] = telemetry.get("altitude_m")
+        detection["pitch_deg"] = telemetry.get("pitch_deg")
+        detection["roll_deg"] = telemetry.get("roll_deg")
+        detection["yaw_deg"] = telemetry.get("yaw_deg")
 
     # Overlay: status bar at top
     bar_h = 36
@@ -191,6 +333,7 @@ def _frame_generator(
     post_url: str | None,
     skip: int,
     max_dim: int,
+    mode: str,
 ) -> Generator[bytes, None, None]:
     """Yield MJPEG frames."""
     # Resolve source
@@ -234,7 +377,7 @@ def _frame_generator(
                 scale = max_dim / max(h, w)
                 frame = cv2.resize(frame, (int(w * scale), int(h * scale)))
 
-            frame = _annotate_frame(frame, conf, post_url)
+            frame = _annotate_frame(frame, conf, post_url, mode)
 
             _, buf = cv2.imencode(".jpg", frame, [cv2.IMWRITE_JPEG_QUALITY, 80])
             yield (b"--frame\r\nContent-Type: image/jpeg\r\n\r\n" + buf.tobytes() + b"\r\n")
@@ -251,6 +394,7 @@ def live_stream(
     post: bool = Query(default=True, description="Auto-POST detections to DB"),
     skip: int = Query(default=2, description="Run YOLO every N frames (1=every frame)"),
     max_dim: int = Query(default=640, description="Max frame dimension for inference"),
+    mode: str = Query(default="vehicle", pattern="^(vehicle|drone)$", description="Mock platform mode"),
 ):
     """MJPEG stream with real-time YOLO pothole detection overlaid.
 
@@ -259,7 +403,15 @@ def live_stream(
     """
     post_url = f"http://localhost:{os.environ.get('PORT', 8000)}/detections" if post else None
     return StreamingResponse(
-        _frame_generator(source, conf, post_url, skip, max_dim),
+        _frame_generator(source, conf, post_url, skip, max_dim, mode),
         media_type="multipart/x-mixed-replace; boundary=frame",
         headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
     )
+
+
+@router.get("/telemetry", response_model=LiveTelemetryResponse)
+def live_telemetry(
+    mode: str = Query(default="vehicle", pattern="^(vehicle|drone)$", description="Mock platform mode"),
+):
+    """Return the latest mock sensor telemetry for the live camera feed."""
+    return LiveTelemetryResponse(telemetry=_current_telemetry(mode))

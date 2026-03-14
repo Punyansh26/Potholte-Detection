@@ -63,6 +63,24 @@ async def ingest_detection(req: DetectionRequest, db: Session) -> DetectionRespo
             existing.sensor_source = req.sensor_source
         if req.sensor_samples_cm:
             existing.sensor_samples_cm = req.sensor_samples_cm
+        if req.vibration_rms_g is not None:
+            existing.latest_vibration_rms_g = req.vibration_rms_g
+        if req.peak_accel_g is not None:
+            existing.latest_peak_accel_g = req.peak_accel_g
+        if req.shock_index is not None:
+            existing.latest_shock_index = req.shock_index
+        if req.roughness_index is not None:
+            existing.latest_roughness_index = req.roughness_index
+        if req.speed_kph is not None:
+            existing.latest_speed_kph = req.speed_kph
+        if req.altitude_m is not None:
+            existing.latest_altitude_m = req.altitude_m
+        if req.pitch_deg is not None:
+            existing.latest_pitch_deg = req.pitch_deg
+        if req.roll_deg is not None:
+            existing.latest_roll_deg = req.roll_deg
+        if req.yaw_deg is not None:
+            existing.latest_yaw_deg = req.yaw_deg
         sev_order = {"low": 0, "medium": 1, "high": 2, "critical": 3}
         if sev_order.get(severity, 0) > sev_order.get(existing.severity, 0):
             existing.severity = severity
@@ -84,6 +102,15 @@ async def ingest_detection(req: DetectionRequest, db: Session) -> DetectionRespo
             sensor_fusion_score=req.sensor_fusion_score,
             sensor_source=req.sensor_source or "",
             sensor_samples_cm=req.sensor_samples_cm,
+            latest_vibration_rms_g=req.vibration_rms_g,
+            latest_peak_accel_g=req.peak_accel_g,
+            latest_shock_index=req.shock_index,
+            latest_roughness_index=req.roughness_index,
+            latest_speed_kph=req.speed_kph,
+            latest_altitude_m=req.altitude_m,
+            latest_pitch_deg=req.pitch_deg,
+            latest_roll_deg=req.roll_deg,
+            latest_yaw_deg=req.yaw_deg,
         )
         db.add(pothole)
         db.commit()

@@ -64,6 +64,15 @@ class DefectRegistry(Base):
     sensor_fusion_score = Column(Float, nullable=True)
     sensor_source = Column(String(50), default="")
     sensor_samples_cm = Column(JSON, default=list)
+    latest_vibration_rms_g = Column(Float, nullable=True)
+    latest_peak_accel_g = Column(Float, nullable=True)
+    latest_shock_index = Column(Integer, nullable=True)
+    latest_roughness_index = Column(Float, nullable=True)
+    latest_speed_kph = Column(Float, nullable=True)
+    latest_altitude_m = Column(Float, nullable=True)
+    latest_pitch_deg = Column(Float, nullable=True)
+    latest_roll_deg = Column(Float, nullable=True)
+    latest_yaw_deg = Column(Float, nullable=True)
 
     # Relationships
     grievances = relationship("GrievanceLifecycle", back_populates="pothole")
@@ -101,6 +110,15 @@ def _ensure_hackathon_columns():
         "sensor_fusion_score": "FLOAT",
         "sensor_source": "VARCHAR(50) DEFAULT ''",
         "sensor_samples_cm": "JSON",
+        "latest_vibration_rms_g": "FLOAT",
+        "latest_peak_accel_g": "FLOAT",
+        "latest_shock_index": "INTEGER",
+        "latest_roughness_index": "FLOAT",
+        "latest_speed_kph": "FLOAT",
+        "latest_altitude_m": "FLOAT",
+        "latest_pitch_deg": "FLOAT",
+        "latest_roll_deg": "FLOAT",
+        "latest_yaw_deg": "FLOAT",
     }
 
     with engine.begin() as conn:

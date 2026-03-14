@@ -22,6 +22,15 @@ class DetectionRequest(BaseModel):
     sensor_fusion_score: Optional[float] = None
     sensor_source: Optional[str] = None
     sensor_samples_cm: List[float] = Field(default_factory=list)
+    vibration_rms_g: Optional[float] = None
+    peak_accel_g: Optional[float] = None
+    shock_index: Optional[int] = None
+    roughness_index: Optional[float] = None
+    speed_kph: Optional[float] = None
+    altitude_m: Optional[float] = None
+    pitch_deg: Optional[float] = None
+    roll_deg: Optional[float] = None
+    yaw_deg: Optional[float] = None
 
 class DetectionResponse(BaseModel):
     pothole_id: int
@@ -52,6 +61,15 @@ class LiveFrameDetection(BaseModel):
     estimated_depth_cm: Optional[float] = None
     sensor_fusion_score: Optional[float] = None
     sensor_source: Optional[str] = None
+    vibration_rms_g: Optional[float] = None
+    peak_accel_g: Optional[float] = None
+    shock_index: Optional[int] = None
+    roughness_index: Optional[float] = None
+    speed_kph: Optional[float] = None
+    altitude_m: Optional[float] = None
+    pitch_deg: Optional[float] = None
+    roll_deg: Optional[float] = None
+    yaw_deg: Optional[float] = None
 
 
 class LiveFrameResponse(BaseModel):
@@ -59,6 +77,31 @@ class LiveFrameResponse(BaseModel):
     processed_at: str = ""
     frame_width: int = 0
     frame_height: int = 0
+
+
+class LiveSensorTelemetry(BaseModel):
+    mode: str = "vehicle"
+    sensor_source: str = "demo-sensor-rig"
+    captured_at: str = ""
+    detection_count: int = 0
+    max_severity: str = "none"
+    vibration_rms_g: float = 0.0
+    peak_accel_g: float = 0.0
+    shock_index: int = 0
+    roughness_index: float = 0.0
+    speed_kph: Optional[float] = None
+    altitude_m: Optional[float] = None
+    pitch_deg: float = 0.0
+    roll_deg: float = 0.0
+    yaw_deg: float = 0.0
+    ultrasonic_distance_cm: Optional[float] = None
+    estimated_depth_cm: Optional[float] = None
+    sensor_fusion_score: Optional[float] = None
+    advisory: str = "Monitoring road surface"
+
+
+class LiveTelemetryResponse(BaseModel):
+    telemetry: LiveSensorTelemetry
 
 
 # ── Pothole list / detail ─────────────────────────────────────────────
@@ -83,6 +126,15 @@ class PotholeOut(BaseModel):
     sensor_fusion_score: Optional[float] = None
     sensor_source: str = ""
     sensor_samples_cm: list = []
+    latest_vibration_rms_g: Optional[float] = None
+    latest_peak_accel_g: Optional[float] = None
+    latest_shock_index: Optional[int] = None
+    latest_roughness_index: Optional[float] = None
+    latest_speed_kph: Optional[float] = None
+    latest_altitude_m: Optional[float] = None
+    latest_pitch_deg: Optional[float] = None
+    latest_roll_deg: Optional[float] = None
+    latest_yaw_deg: Optional[float] = None
 
 class PotholeDetail(PotholeOut):
     grievances: List[GrievanceOut] = []

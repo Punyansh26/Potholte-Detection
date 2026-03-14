@@ -69,6 +69,15 @@ async def detect_live_frame(req: LiveFrameRequest, db: Session = Depends(get_db)
                 estimated_depth_cm=detection.get("estimated_depth_cm"),
                 sensor_fusion_score=detection.get("sensor_fusion_score"),
                 sensor_source=detection.get("sensor_source"),
+                vibration_rms_g=detection.get("vibration_rms_g"),
+                peak_accel_g=detection.get("peak_accel_g"),
+                shock_index=detection.get("shock_index"),
+                roughness_index=detection.get("roughness_index"),
+                speed_kph=detection.get("speed_kph"),
+                altitude_m=detection.get("altitude_m"),
+                pitch_deg=detection.get("pitch_deg"),
+                roll_deg=detection.get("roll_deg"),
+                yaw_deg=detection.get("yaw_deg"),
             )
         )
 

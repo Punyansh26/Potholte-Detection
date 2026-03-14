@@ -131,6 +131,58 @@
             style="width:70px; vertical-align:middle; margin-left:6px; accent-color:var(--accent)">
           <span id="skip-value" style="color:var(--text-primary); font-weight:600">2</span> frames
         </label>
+        <label style="font-size:12px; color:var(--text-secondary); align-self:center; margin-left:12px">
+          Platform
+          <select id="sensor-mode" class="sensor-mode-select">
+            <option value="vehicle" selected>Govt Vehicle</option>
+            <option value="drone">Drone</option>
+          </select>
+        </label>
+      </div>
+
+      <div class="sensor-panel">
+        <div class="sensor-panel-header">
+          <div>
+            <div class="live-kicker">Mock Sensor Fusion</div>
+            <h3>Vehicle / Drone Telemetry</h3>
+          </div>
+          <div class="sensor-source" id="sensor-source">demo-sensor-rig</div>
+        </div>
+
+        <div class="sensor-grid">
+          <div class="sensor-card sensor-card-accent">
+            <label>Vibration RMS</label>
+            <div class="value" id="sensor-vibration">0.00 g</div>
+            <div class="meta" id="sensor-peak">Peak 0.00 g</div>
+          </div>
+          <div class="sensor-card">
+            <label>Shock Index</label>
+            <div class="value" id="sensor-shock">0</div>
+            <div class="meta" id="sensor-roughness">Roughness 0.0</div>
+          </div>
+          <div class="sensor-card">
+            <label>Clearance</label>
+            <div class="value" id="sensor-clearance">--</div>
+            <div class="meta" id="sensor-depth">Depth --</div>
+          </div>
+          <div class="sensor-card">
+            <label>Fusion Score</label>
+            <div class="value" id="sensor-fusion">--</div>
+            <div class="meta" id="sensor-severity">Severity none</div>
+          </div>
+          <div class="sensor-card">
+            <label>Platform Speed</label>
+            <div class="value" id="sensor-speed">--</div>
+            <div class="meta" id="sensor-altitude">Altitude --</div>
+          </div>
+          <div class="sensor-card">
+            <label>Attitude</label>
+            <div class="value" id="sensor-attitude">P 0° / R 0°</div>
+            <div class="meta" id="sensor-yaw">Yaw 0°</div>
+          </div>
+        </div>
+
+        <div class="sensor-advisory" id="sensor-advisory">Monitoring road surface</div>
       </div>
 
       <!-- hidden canvas for frame capture (kept for future use) -->
@@ -214,6 +266,26 @@
   <div class="detail-field">
     <label>Sensor Fusion</label>
     <div class="value" id="detail-fusion"></div>
+  </div>
+  <div class="detail-field">
+    <label>Vibration RMS</label>
+    <div class="value" id="detail-vibration"></div>
+  </div>
+  <div class="detail-field">
+    <label>Peak Accel</label>
+    <div class="value" id="detail-peak-accel"></div>
+  </div>
+  <div class="detail-field">
+    <label>Shock / Roughness</label>
+    <div class="value" id="detail-shock"></div>
+  </div>
+  <div class="detail-field">
+    <label>Speed / Altitude</label>
+    <div class="value" id="detail-speed-altitude"></div>
+  </div>
+  <div class="detail-field">
+    <label>Attitude</label>
+    <div class="value" id="detail-attitude"></div>
   </div>
   <div class="detail-field">
     <label>Snapshots</label>
