@@ -1,0 +1,44 @@
+[
+  {
+    "camera_id": "demo-rig-01",
+    "timestamp": "2026-03-14T12:00:00+0000",
+    "lat": 19.076120,
+    "lon": 72.877610,
+    "bbox": [118, 212, 286, 354],
+    "confidence": 0.91,
+    "severity_est": "high",
+    "ultrasonic_distance_cm": 13.8,
+    "estimated_depth_cm": 10.7,
+    "sensor_fusion_score": 0.88,
+    "sensor_source": "demo-ultrasonic",
+    "sensor_samples_cm": [13.66, 13.92, 13.71, 14.04, 13.75, 13.88]
+  },
+  {
+    "camera_id": "demo-rig-01",
+    "timestamp": "2026-03-14T12:00:03+0000",
+    "lat": 19.076145,
+    "lon": 72.877645,
+    "bbox": [104, 190, 328, 392],
+    "confidence": 0.95,
+    "severity_est": "critical",
+    "ultrasonic_distance_cm": 9.9,
+    "estimated_depth_cm": 14.4,
+    "sensor_fusion_score": 0.94,
+    "sensor_source": "demo-ultrasonic",
+    "sensor_samples_cm": [10.11, 9.82, 9.76, 10.03, 9.88, 9.95]
+  },
+  {
+    "camera_id": "demo-rig-02",
+    "timestamp": "2026-03-14T12:00:07+0000",
+    "lat": 19.076300,
+    "lon": 72.877820,
+    "bbox": [230, 248, 314, 318],
+    "confidence": 0.84,
+    "severity_est": "medium",
+    "ultrasonic_distance_cm": 17.6,
+    "estimated_depth_cm": 6.3,
+    "sensor_fusion_score": 0.79,
+    "sensor_source": "demo-ultrasonic",
+    "sensor_samples_cm": [17.52, 17.64, 17.89, 17.41, 17.58, 17.74]
+  }
+]

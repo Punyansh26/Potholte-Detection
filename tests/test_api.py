@@ -66,6 +66,34 @@ def test_post_detection_with_snapshot():
     assert resp.status_code == 200
 
 
+def test_post_detection_persists_ultrasonic_demo_data():
+    payload = {
+        "camera_id": "sensor-rig",
+        "lat": 19.0760,
+        "lon": 72.8777,
+        "bbox": [10, 20, 300, 400],
+        "confidence": 0.88,
+        "severity_est": "medium",
+        "ultrasonic_distance_cm": 14.2,
+        "estimated_depth_cm": 9.6,
+        "sensor_fusion_score": 0.87,
+        "sensor_source": "demo-ultrasonic",
+        "sensor_samples_cm": [14.0, 14.4, 14.1, 14.2],
+    }
+    resp = client.post("/detections", json=payload)
+    assert resp.status_code == 200
+    pothole_id = resp.json()["pothole_id"]
+
+    detail = client.get(f"/potholes/{pothole_id}")
+    assert detail.status_code == 200
+    body = detail.json()
+    assert body["latest_ultrasonic_distance_cm"] == 14.2
+    assert body["estimated_depth_cm"] == 9.6
+    assert body["sensor_fusion_score"] == 0.87
+    assert body["sensor_source"] == "demo-ultrasonic"
+    assert body["sensor_samples_cm"] == [14.0, 14.4, 14.1, 14.2]
+
+
 def test_live_detect_persists_detection(monkeypatch):
     img = np.full((24, 24, 3), 180, dtype=np.uint8)
     ok, buf = cv2.imencode(".jpg", img)
@@ -85,6 +113,10 @@ def test_live_detect_persists_detection(monkeypatch):
                 "severity_est": "medium",
                 "class_name": "pothole",
                 "snapshot_base64": base64.b64encode(buf).decode(),
+                "ultrasonic_distance_cm": 15.4,
+                "estimated_depth_cm": 8.1,
+                "sensor_fusion_score": 0.84,
+                "sensor_source": "demo-ultrasonic",
             }]
 
     import backend.routers.detections as detections_router
@@ -106,6 +138,9 @@ def test_live_detect_persists_detection(monkeypatch):
     assert len(data["detections"]) == 1
     assert data["detections"][0]["pothole_id"] == 1
     assert data["detections"][0]["is_new"] is True
+    assert data["detections"][0]["ultrasonic_distance_cm"] == 15.4
+    assert data["detections"][0]["estimated_depth_cm"] == 8.1
+    assert data["detections"][0]["sensor_fusion_score"] == 0.84
 
 
 # ── GET /potholes ────────────────────────────────────────────────

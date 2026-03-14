@@ -13,7 +13,7 @@ from backend.database import DefectRegistry
 from backend.models import DetectionRequest, DetectionResponse
 from backend.services.dedup import find_nearby_pothole
 from backend.services.grievance import build_cpgrams_payload, file_grievance
-from backend.services.risk_scoring import compute_risk_score, estimate_severity
+from backend.services.risk_scoring import compute_risk_score, estimate_severity, fuse_sensor_severity
 from config import settings
 
 
@@ -30,8 +30,14 @@ def save_snapshot(snapshot_b64: str | None) -> str | None:
 
 async def ingest_detection(req: DetectionRequest, db: Session) -> DetectionResponse:
     """Deduplicate, persist, and optionally auto-file a grievance."""
-    severity = req.severity_est or estimate_severity(req.bbox)
-    risk = compute_risk_score(severity, req.confidence)
+    base_severity = req.severity_est or estimate_severity(req.bbox)
+    severity = fuse_sensor_severity(base_severity, req.estimated_depth_cm)
+    risk = compute_risk_score(
+        severity,
+        req.confidence,
+        depth_cm=req.estimated_depth_cm,
+        sensor_fusion_score=req.sensor_fusion_score,
+    )
     snap_url = save_snapshot(req.snapshot_base64)
 
     existing = find_nearby_pothole(db, req.lat, req.lon, settings.dedup_radius_meters)
@@ -47,6 +53,16 @@ async def ingest_detection(req: DetectionRequest, db: Session) -> DetectionRespo
             snaps = existing.snapshots or []
             snaps.append(snap_url)
             existing.snapshots = snaps
+        if req.ultrasonic_distance_cm is not None:
+            existing.latest_ultrasonic_distance_cm = req.ultrasonic_distance_cm
+        if req.estimated_depth_cm is not None:
+            existing.estimated_depth_cm = req.estimated_depth_cm
+        if req.sensor_fusion_score is not None:
+            existing.sensor_fusion_score = req.sensor_fusion_score
+        if req.sensor_source:
+            existing.sensor_source = req.sensor_source
+        if req.sensor_samples_cm:
+            existing.sensor_samples_cm = req.sensor_samples_cm
         sev_order = {"low": 0, "medium": 1, "high": 2, "critical": 3}
         if sev_order.get(severity, 0) > sev_order.get(existing.severity, 0):
             existing.severity = severity
@@ -63,6 +79,11 @@ async def ingest_detection(req: DetectionRequest, db: Session) -> DetectionRespo
             risk_score=risk,
             avg_confidence=req.confidence,
             snapshots=[snap_url] if snap_url else [],
+            latest_ultrasonic_distance_cm=req.ultrasonic_distance_cm,
+            estimated_depth_cm=req.estimated_depth_cm,
+            sensor_fusion_score=req.sensor_fusion_score,
+            sensor_source=req.sensor_source or "",
+            sensor_samples_cm=req.sensor_samples_cm,
         )
         db.add(pothole)
         db.commit()

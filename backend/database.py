@@ -59,6 +59,11 @@ class DefectRegistry(Base):
     detection_count = Column(Integer, default=1)
     snapshots = Column(JSON, default=list)                  # list of snapshot URLs
     description = Column(Text, default="")
+    latest_ultrasonic_distance_cm = Column(Float, nullable=True)
+    estimated_depth_cm = Column(Float, nullable=True)
+    sensor_fusion_score = Column(Float, nullable=True)
+    sensor_source = Column(String(50), default="")
+    sensor_samples_cm = Column(JSON, default=list)
 
     # Relationships
     grievances = relationship("GrievanceLifecycle", back_populates="pothole")
@@ -85,6 +90,29 @@ class GrievanceLifecycle(Base):
 def init_db():
     """Create tables if they don't exist."""
     Base.metadata.create_all(bind=engine)
+    _ensure_hackathon_columns()
+
+
+def _ensure_hackathon_columns():
+    """Add newer demo columns to existing sqlite deployments without Alembic."""
+    columns = {
+        "latest_ultrasonic_distance_cm": "FLOAT",
+        "estimated_depth_cm": "FLOAT",
+        "sensor_fusion_score": "FLOAT",
+        "sensor_source": "VARCHAR(50) DEFAULT ''",
+        "sensor_samples_cm": "JSON",
+    }
+
+    with engine.begin() as conn:
+        existing = {
+            row[1]
+            for row in conn.exec_driver_sql("PRAGMA table_info(defect_registry)").fetchall()
+        }
+        for name, sql_type in columns.items():
+            if name not in existing:
+                conn.exec_driver_sql(
+                    f"ALTER TABLE defect_registry ADD COLUMN {name} {sql_type}"
+                )
 
 
 def get_db():

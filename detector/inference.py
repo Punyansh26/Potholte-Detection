@@ -15,6 +15,8 @@ import numpy as np
 from pathlib import Path
 from typing import List, Dict, Any
 
+from detector.demo_ultrasonic import synthesize_ultrasonic_profile
+
 try:
     from ultralyticsplus import YOLO
     _YOLO_IMPORT_HINT = "ultralyticsplus"
@@ -118,6 +120,7 @@ class PotholeDetector:
 
                 bbox = [int(x1), int(y1), int(x2), int(y2)]
                 severity = _estimate_severity(bbox, w, h)
+                ultrasonic_profile = synthesize_ultrasonic_profile(bbox, w, h, conf, severity)
 
                 # Crop snapshot and encode
                 crop = img[int(y1):int(y2), int(x1):int(x2)]
@@ -134,6 +137,7 @@ class PotholeDetector:
                     "severity_est": severity,
                     "class_name": cls_name,
                     "snapshot_base64": snap_b64,
+                    **ultrasonic_profile,
                 })
         return detections
 

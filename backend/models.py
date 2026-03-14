@@ -17,6 +17,11 @@ class DetectionRequest(BaseModel):
     confidence: float = 0.5
     severity_est: Optional[str] = None           # auto-computed if not given
     snapshot_base64: Optional[str] = None        # base64 JPEG
+    ultrasonic_distance_cm: Optional[float] = None
+    estimated_depth_cm: Optional[float] = None
+    sensor_fusion_score: Optional[float] = None
+    sensor_source: Optional[str] = None
+    sensor_samples_cm: List[float] = Field(default_factory=list)
 
 class DetectionResponse(BaseModel):
     pothole_id: int
@@ -43,6 +48,10 @@ class LiveFrameDetection(BaseModel):
     pothole_id: Optional[int] = None
     risk_score: Optional[float] = None
     is_new: Optional[bool] = None
+    ultrasonic_distance_cm: Optional[float] = None
+    estimated_depth_cm: Optional[float] = None
+    sensor_fusion_score: Optional[float] = None
+    sensor_source: Optional[str] = None
 
 
 class LiveFrameResponse(BaseModel):
@@ -69,6 +78,11 @@ class PotholeOut(BaseModel):
     detection_count: int
     snapshots: list = []
     description: str = ""
+    latest_ultrasonic_distance_cm: Optional[float] = None
+    estimated_depth_cm: Optional[float] = None
+    sensor_fusion_score: Optional[float] = None
+    sensor_source: str = ""
+    sensor_samples_cm: list = []
 
 class PotholeDetail(PotholeOut):
     grievances: List[GrievanceOut] = []

@@ -65,6 +65,10 @@ async def detect_live_frame(req: LiveFrameRequest, db: Session = Depends(get_db)
                 pothole_id=pothole_id,
                 risk_score=risk_score,
                 is_new=is_new,
+                ultrasonic_distance_cm=detection.get("ultrasonic_distance_cm"),
+                estimated_depth_cm=detection.get("estimated_depth_cm"),
+                sensor_fusion_score=detection.get("sensor_fusion_score"),
+                sensor_source=detection.get("sensor_source"),
             )
         )
 

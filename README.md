@@ -67,6 +67,10 @@ python detector/edge_client.py --source ./test_images/
 Default model is loaded from UltralyticsPlus/HuggingFace:
 `keremberke/yolov8n-pothole-segmentation`
 
+Each vision detection also ships with synthetic hackathon telemetry from a demo ultrasonic sensor.
+The app stores a mock road-clearance reading, estimated pothole depth, and a sensor-fusion score so
+you can present multi-sensor pothole validation without extra hardware.
+
 You can override it at runtime:
 
 ```bash
@@ -147,6 +151,7 @@ docker-compose up -d
 | Auto-escalation when closed but still damaged | ✅ |
 | Real-time Leaflet dashboard (dark theme) | ✅ |
 | Live browser camera streaming + overlay detection | ✅ |
+| Demo ultrasonic sensor fusion data | ✅ |
 | Manual report with photo upload | ✅ |
 | Privacy blur (faces & license plates) | ✅ |
 | Docker + PostGIS support | ✅ |

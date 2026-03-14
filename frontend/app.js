@@ -172,6 +172,15 @@ async function openDetail(pothole) {
     document.getElementById('detail-last-seen').textContent = formatTime(pothole.last_seen);
     document.getElementById('detail-confidence').textContent = `${(pothole.avg_confidence * 100).toFixed(1)}%`;
     document.getElementById('detail-count').textContent = pothole.detection_count;
+    document.getElementById('detail-ultrasonic').textContent = pothole.latest_ultrasonic_distance_cm != null
+        ? `${Number(pothole.latest_ultrasonic_distance_cm).toFixed(1)} cm (${pothole.sensor_source || 'demo'})`
+        : '—';
+    document.getElementById('detail-depth').textContent = pothole.estimated_depth_cm != null
+        ? `${Number(pothole.estimated_depth_cm).toFixed(1)} cm`
+        : '—';
+    document.getElementById('detail-fusion').textContent = pothole.sensor_fusion_score != null
+        ? `${Math.round(Number(pothole.sensor_fusion_score) * 100)}% match`
+        : '—';
     document.getElementById('detail-description').textContent = pothole.description || '—';
 
     // Snapshots
